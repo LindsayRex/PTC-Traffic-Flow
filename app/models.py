@@ -1,97 +1,88 @@
-# app/models.py
-# This file defines Python classes that map directly to your 
-# PostgreSQL tables using SQLAlchemy's ORM (Object Relational Mapper). 
-# We use the modern SQLAlchemy 2.0 style syntax.
 
-import datetime
 from sqlalchemy import (
-    create_engine, Integer, String, Float, Boolean, Date, ForeignKey, MetaData
+    Column, Integer, String, Boolean, Float, Date, ForeignKey,
+    Index, BigInteger
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import GEOMETRY # Use PostgreSQL specific type
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+from geoalchemy2 import Geometry
 
-# Define a base class for declarative models
-class Base(DeclarativeBase):
-    pass
+Base = declarative_base()
 
-# --- Station Model ---
 class Station(Base):
     __tablename__ = 'stations'
+    
+    station_key = Column(Integer, primary_key=True)
+    station_id = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=False)
+    road_name = Column(String, nullable=False, index=True)
+    full_name = Column(String)
+    common_road_name = Column(String, index=True)
+    lga = Column(String, index=True)
+    suburb = Column(String, index=True)
+    post_code = Column(String)
+    road_functional_hierarchy = Column(String, index=True)
+    lane_count = Column(String)
+    road_classification_type = Column(String)
+    device_type = Column(String)
+    permanent_station = Column(Boolean, default=False)
+    vehicle_classifier = Column(Boolean, default=False)
+    heavy_vehicle_checking_station = Column(Boolean, default=False)
+    quality_rating = Column(Integer)
+    wgs84_latitude = Column(Float)
+    wgs84_longitude = Column(Float)
+    location_geom = Column(Geometry('POINT', srid=4326), index=True)
 
-    station_key: Mapped[int] = mapped_column(Integer, primary_key=True)
-    station_id: Mapped[str] = mapped_column(String, nullable=True, index=True)
-    name: Mapped[str] = mapped_column(String, nullable=True)
-    road_name: Mapped[str] = mapped_column(String, nullable=True, index=True)
-    full_name: Mapped[str] = mapped_column(String, nullable=True)
-    common_road_name: Mapped[str] = mapped_column(String, nullable=True)
-    lga: Mapped[str] = mapped_column(String, nullable=True, index=True)
-    suburb: Mapped[str] = mapped_column(String, nullable=True, index=True)
-    post_code: Mapped[str] = mapped_column(String, nullable=True)
-    road_functional_hierarchy: Mapped[str] = mapped_column(String, nullable=True, index=True)
-    lane_count: Mapped[str] = mapped_column(String, nullable=True)
-    road_classification_type: Mapped[str] = mapped_column(String, nullable=True)
-    device_type: Mapped[str] = mapped_column(String, nullable=True)
-    permanent_station: Mapped[bool] = mapped_column(Boolean, nullable=True)
-    vehicle_classifier: Mapped[bool] = mapped_column(Boolean, nullable=True)
-    heavy_vehicle_checking_station: Mapped[bool] = mapped_column(Boolean, nullable=True)
-    quality_rating: Mapped[int] = mapped_column(Integer, nullable=True)
-    wgs84_latitude: Mapped[float] = mapped_column(Float, nullable=True)
-    wgs84_longitude: Mapped[float] = mapped_column(Float, nullable=True)
-    # Use GEOMETRY type, specify Point and SRID 4326 (WGS84)
-    # Ensure PostGIS extension is enabled in your PostgreSQL database: CREATE EXTENSION postgis;
-    location_geom = mapped_column(GEOMETRY(geometry_type='POINT', srid=4326), nullable=True, index=True)
+    # Relationship with HourlyCount
+    hourly_counts = relationship("HourlyCount", back_populates="station")
 
-    # Define the relationship to HourlyCount (one station has many counts)
-    hourly_counts: Mapped[list["HourlyCount"]] = relationship(back_populates="station")
-
-    def __repr__(self):
-        return f"<Station(station_key={self.station_key}, station_id='{self.station_id}', road_name='{self.road_name}')>"
-
-# --- Hourly Count Model ---
 class HourlyCount(Base):
     __tablename__ = 'hourly_counts'
+    
+    count_id = Column(BigInteger, primary_key=True)
+    station_key = Column(Integer, ForeignKey('stations.station_key'), nullable=False, index=True)
+    traffic_direction_seq = Column(Integer, nullable=False)
+    cardinal_direction_seq = Column(Integer)
+    classification_seq = Column(Integer, nullable=False, index=True)
+    count_date = Column(Date, nullable=False, index=True)
+    year = Column(Integer, nullable=False, index=True)
+    month = Column(Integer, nullable=False, index=True)
+    day_of_week = Column(Integer, nullable=False, index=True)
+    is_public_holiday = Column(Boolean, default=False)
+    is_school_holiday = Column(Boolean, default=False)
+    
+    # Hourly volume columns
+    hour_00 = Column(Integer)
+    hour_01 = Column(Integer)
+    hour_02 = Column(Integer)
+    hour_03 = Column(Integer)
+    hour_04 = Column(Integer)
+    hour_05 = Column(Integer)
+    hour_06 = Column(Integer)
+    hour_07 = Column(Integer)
+    hour_08 = Column(Integer)
+    hour_09 = Column(Integer)
+    hour_10 = Column(Integer)
+    hour_11 = Column(Integer)
+    hour_12 = Column(Integer)
+    hour_13 = Column(Integer)
+    hour_14 = Column(Integer)
+    hour_15 = Column(Integer)
+    hour_16 = Column(Integer)
+    hour_17 = Column(Integer)
+    hour_18 = Column(Integer)
+    hour_19 = Column(Integer)
+    hour_20 = Column(Integer)
+    hour_21 = Column(Integer)
+    hour_22 = Column(Integer)
+    hour_23 = Column(Integer)
+    
+    daily_total = Column(Integer)
+    
+    # Relationship with Station
+    station = relationship("Station", back_populates="hourly_counts")
 
-    count_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    station_key: Mapped[int] = mapped_column(ForeignKey('stations.station_key'), index=True)
-    traffic_direction_seq: Mapped[int] = mapped_column(Integer, nullable=True)
-    cardinal_direction_seq: Mapped[int] = mapped_column(Integer, nullable=True)
-    classification_seq: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
-    count_date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
-    year: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
-    month: Mapped[int] = mapped_column(Integer, nullable=True, index=True)
-    day_of_week: Mapped[int] = mapped_column(Integer, nullable=True, index=True) # 1=Mon, 7=Sun
-    is_public_holiday: Mapped[bool] = mapped_column(Boolean, nullable=True)
-    is_school_holiday: Mapped[bool] = mapped_column(Boolean, nullable=True) # Needs external data source usually
-
-    # Map hourly columns
-    hour_00: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_01: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_02: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_03: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_04: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_05: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_06: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_07: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_08: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_09: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_10: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_11: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_12: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_13: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_14: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_15: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_16: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_17: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_18: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_19: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_20: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_21: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_22: Mapped[int] = mapped_column(Integer, nullable=True)
-    hour_23: Mapped[int] = mapped_column(Integer, nullable=True)
-    daily_total: Mapped[int] = mapped_column(Integer, nullable=True)
-
-    # Define the relationship back to Station (many counts belong to one station)
-    station: Mapped["Station"] = relationship(back_populates="hourly_counts")
-
-    def __repr__(self):
-        return f"<HourlyCount(count_id={self.count_id}, station_key={self.station_key}, date='{self.count_date}', class={self.classification_seq})>"
+# Create indexes
+Index('idx_station_composite', Station.lga, Station.suburb, Station.road_name)
+Index('idx_hourly_composite', HourlyCount.station_key, HourlyCount.count_date, 
+      HourlyCount.classification_seq)
