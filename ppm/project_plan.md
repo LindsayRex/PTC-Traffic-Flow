@@ -6,7 +6,7 @@ Objective:
 use SQLAlchemy to interact with the database at all times, no 'native postgres
 hard coded' SQL commands or quearies. Use SQLAlchemy.  
 
-
+cerate this database: 
 
 stations Table: Stores static station metadata.
 station_key (INTEGER, Primary Key) - Unique identifier used across tables.
