@@ -1,4 +1,4 @@
-modules = ["python-3.12"]
+modules = ["python-3.12", "postgresql-16"]
 run = "streamlit run ptc_traffic_flow/app/main_app.py"
 
 [nix]
@@ -6,3 +6,23 @@ channel = "stable-24_05"
 
 [deployment]
 run = ["sh", "-c", "streamlit run ptc_traffic_flow/app/main_app.py"]
+
+[workflows]
+runButton = "Run"
+
+[[workflows.workflow]]
+name = "Run"
+author = 40995054
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "uv pip install -r requirements.txt"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python app/init_db.py"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run app/main_app.py"
