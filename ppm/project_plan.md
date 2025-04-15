@@ -4,7 +4,7 @@ Objective:
 use SQLAlchemy to interact with the database at all times, no 'native postgres
 hard coded' SQL commands or quearies. Use SQLAlchemy.  
 
-cerate this database: 
+Create this database: 
 
 stations Table: Stores static station metadata.
 station_key (INTEGER, Primary Key) - Unique identifier used across tables.
@@ -69,6 +69,16 @@ AADT (Annual Average Daily Traffic): Calculate average daily_total over a full y
 AAWT (Average Annual Weekday Traffic): Similar to AADT but only for Mon-Fri, excluding public holidays.
 Heavy Vehicle Percentage: (Sum of daily_total where classification_seq=3) / (Sum of daily_total where classification_seq=1) for a given period and station (only for classifying stations).
 Geospatial Data: Ensure wgs84_latitude and wgs84_longitude are used to create the location_geom point data during data loading.
+
+
+
+Add uniform loging accross ap 
+
+
+log_config.setup_logging(level=logging.INFO) # Set desired log level
+logger = logging.getLogger(__name__)
+
+
 
 1. Streamlit App Structure 
 

@@ -26,3 +26,7 @@ args = "python app/init_db.py"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "streamlit run app/main_app.py"
+
+[[ports]]
+localPort = 8501
+externalPort = 80
