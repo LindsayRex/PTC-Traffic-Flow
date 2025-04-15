@@ -32,6 +32,11 @@ def init_db():
         
         # Transform and insert stations
         for _, row in df_stations.iterrows():
+            # Check if station already exists
+            existing = session.query(Station).filter_by(station_key=row.get('station_key')).first()
+            if existing:
+                continue  # Skip if already exists
+                
             station = Station(
                 station_key=row.get('station_key'),
                 station_id=str(row.get('station_id')),
