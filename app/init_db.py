@@ -60,9 +60,19 @@ def init_db():
             )
             session.add(station)
         
-        # Commit the changes
+        # Commit the initial data
         session.commit()
-        print("Successfully imported station data")
+        
+        # Update geometries for all stations
+        stmt = text("""
+            UPDATE stations 
+            SET location_geom = ST_SetSRID(ST_MakePoint(wgs84_longitude, wgs84_latitude), 4326)
+            WHERE location_geom IS NULL
+        """)
+        session.execute(stmt)
+        session.commit()
+        
+        print("Successfully imported station data and updated geometries")
         
     except Exception as e:
         print(f"Error importing data: {e}")
