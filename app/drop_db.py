@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 def drop_db():
     logger.info("Starting database dropping process")
     DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/traffic_db')
+
+    # Add sslmode=require to the database URL
+    if "sslmode" not in DATABASE_URL:
+        DATABASE_URL += "?sslmode=require"
+
     logger.info(f"Using database URL: {DATABASE_URL}")
 
     engine = create_engine(DATABASE_URL)

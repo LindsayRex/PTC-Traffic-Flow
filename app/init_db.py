@@ -1,5 +1,4 @@
 import os
-import datetime
 import logging
 from log_config import setup_logging
 from sqlalchemy import create_engine, text
@@ -7,20 +6,11 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from models import Base, Station, HourlyCount
 import pandas as pd
-from geoalchemy2.functions import ST_MakePoint
 from geoalchemy2 import WKTElement
 
 # Set up logging
 setup_logging()
 logger = logging.getLogger(__name__)
-
-def get_user_confirmation(message):
-    while True:
-        response = input(f"{message} (yes/no): ").lower().strip()
-        if response in ['yes', 'no']:
-            return response == 'yes'
-        print("Please answer 'yes' or 'no'")
-        logger.warning(f"Invalid user input: {response}. Expected 'yes' or 'no'.")
 
 def init_db():
     logger.info("Starting database initialization process")
@@ -115,13 +105,11 @@ def init_db():
                             )
                             session.add(station)
                             stations_count += 1
-                            logger.debug(f"Added station {station.station_key} to session")  # Log station key
-
+                            
                             # Commit in smaller batches to avoid memory issues
                             if stations_count % 500 == 0:
                                 session.commit()
                                 print(f"Committed {stations_count} stations")
-                                logger.info(f"Committed {stations_count} stations")
                                 
                         except Exception as row_error:
                             logger.error(f"Error processing station record {idx}: {row_error}")
