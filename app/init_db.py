@@ -63,7 +63,7 @@ def init_db():
 
                     for idx, row in df_stations.iterrows():
                         try:
-                            if idx % 200 == 0:
+                            if idx % 500 == 0:
                                 print(f"Processed {idx}/{len(df_stations)} records...")
                                 
                             existing = session.query(Station).filter_by(station_key=row.get('station_key')).first()
@@ -77,6 +77,13 @@ def init_db():
                             # Skip if lat or lon is missing or invalid
                             if latitude is None or longitude is None:
                                 logger.warning(f"Skipping row due to invalid latitude or longitude: {row}")
+                                continue
+
+                            try:
+                                latitude = float(latitude)
+                                longitude = float(longitude)
+                            except (ValueError, TypeError) as e:
+                                logger.error(f"Invalid latitude or longitude format in row {idx}: {e}")
                                 continue
 
                             # Create WKT representation of the point geometry
@@ -102,17 +109,19 @@ def init_db():
                                 vehicle_classifier=bool(row.get('vehicle_classifier', False)),
                                 heavy_vehicle_checking_station=bool(row.get('heavy_vehicle_checking_station', False)),
                                 quality_rating=int(row.get('quality_rating', 0)),
-                                wgs84_latitude=float(row.get('wgs84_latitude', 0)),
-                                wgs84_longitude=float(row.get('wgs84_longitude', 0)),
+                                wgs84_latitude=latitude,
+                                wgs84_longitude=longitude,
                                 location_geom=location_geom
                             )
                             session.add(station)
                             stations_count += 1
-                            
+                            logger.debug(f"Added station {station.station_key} to session")  # Log station key
+
                             # Commit in smaller batches to avoid memory issues
-                            if stations_count % 200 == 0:
+                            if stations_count % 500 == 0:
                                 session.commit()
                                 print(f"Committed {stations_count} stations")
+                                logger.info(f"Committed {stations_count} stations")
                                 
                         except Exception as row_error:
                             logger.error(f"Error processing station record {idx}: {row_error}")
@@ -134,61 +143,30 @@ def init_db():
 
                 print("\nUpdating station geometries...")
                 logger.info("Updating station geometries")
-                #stmt = text("""
-                #    UPDATE stations 
-                #    SET location_geom = ST_SetSRID(ST_MakePoint(wgs84_longitude, wgs84_latitude), 4326)
-                #    WHERE location_geom IS NULL
-                #""")
-                #connection.execute(stmt)
-                #connection.commit()
-                print("Station geometries updated successfully")
+                try:
+                    for station in session.query(Station).filter(Station.location_geom == None).all():
+                        try:
+                            # Ensure latitude and longitude are valid floats
+                            latitude = float(station.wgs84_latitude)
+                            longitude = float(station.wgs84_longitude)
 
-                print("\nImporting hourly counts data test data")
-                logger.info("Starting hourly counts import")
-                df_counts = pd.read_csv('app/data/road_traffic_counts_hourly_sample_0.csv')
-                counts_processed = 0
+                            # Create WKT representation of the point geometry
+                            wkt_point = f"POINT({round(longitude, 6)} {round(latitude, 6)})"
+                            station.location_geom = WKTElement(wkt_point, srid=4326)
+                            
+                        except (ValueError, TypeError) as e:
+                            logger.error(f"Invalid lat/lon for station {station.station_key}: {e}")
+                            continue  # Skip to the next station
 
-                for _, row in df_counts.iterrows():
-                    count_date = pd.to_datetime(row['count_date']).date()
+                    session.commit()
+                    print("Station geometries updated successfully")
+                    logger.info("Station geometries updated successfully")
+                except SQLAlchemyError as e:
+                    error_msg = f"SQLAlchemy error during geometry update: {str(e)}"
+                    print(f"\nERROR: {error_msg}")
+                    logger.error(error_msg)
+                    session.rollback()
 
-                    count = HourlyCount(
-                        station_key=row['station_key'],
-                        traffic_direction_seq=row['traffic_direction_seq'],
-                        cardinal_direction_seq=row.get('cardinal_direction_seq'),
-                        classification_seq=row['classification_seq'],
-                        count_date=count_date,
-                        year=count_date.year,
-                        month=count_date.month,
-                        day_of_week=count_date.isoweekday(),
-                        is_public_holiday=bool(row.get('is_public_holiday', False)),
-                        is_school_holiday=bool(row.get('is_school_holiday', False))
-                    )
-
-                    # Add hourly values
-                    hour_cols = [f'hour_{str(h).zfill(2)}' for h in range(24)]
-                    daily_total = 0
-                    valid_hours = 0
-
-                    for hour in range(24):
-                        hour_col = f'hour_{str(hour).zfill(2)}'
-                        value = row.get(hour_col, 0)
-                        setattr(count, hour_col, value)
-                        if value is not None:
-                            daily_total += value
-                            valid_hours += 1
-
-                    count.daily_total = daily_total if valid_hours >= 19 else None
-                    session.add(count)
-                    counts_processed += 1
-
-                    if counts_processed % 200 == 0:
-                        print(f"Processed {counts_processed} hourly count records...")
-                        logger.info(f"Processed {counts_processed} hourly count records")
-                        session.commit()
-
-                session.commit()
-                print(f"\nSuccessfully imported {counts_processed} hourly count records")
-                logger.info(f"Completed importing {counts_processed} hourly count records")
                 print("\nDatabase initialization completed successfully!")
                 logger.info("Database initialization completed successfully")
 
