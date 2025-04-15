@@ -10,9 +10,15 @@ from db_utils import get_db_session  # Import the context manager
 import numpy as np
 from geoalchemy2 import WKTElement
 
+import sys
 # Set up logging
 setup_logging()
 logger = logging.getLogger(__name__)
+
+# Set console handler to WARNING level only
+for handler in logger.handlers:
+    if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stderr:
+        handler.setLevel(logging.WARNING)
 
 # Function to safely convert to float
 def safe_float(value):

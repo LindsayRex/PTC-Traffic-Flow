@@ -12,6 +12,11 @@ from sqlalchemy import text
 setup_logging()
 logger = logging.getLogger(__name__)
 
+# Set console handler to WARNING level only
+for handler in logger.handlers:
+    if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stderr:
+        handler.setLevel(logging.WARNING)
+
 def init_db():
     """Initialize the database with station reference data"""
     logger.info("Starting database initialization process")
