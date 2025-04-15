@@ -27,6 +27,28 @@ args = "python app/init_db.py"
 task = "shell.exec"
 args = "streamlit run app/main_app.py"
 
+[[workflows.workflow]]
+name = "Run Ingestion - load  sample data in"
+author = 40995054
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "streamlit run app/ingestion.py --server.address 0.0.0.0"
+
+[[workflows.workflow]]
+name = "Drop All SQL Tables"
+author = 40995054
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python app/drop_db.py"
+
 [[ports]]
 localPort = 8501
 externalPort = 80
+
+[[ports]]
+localPort = 8502
+externalPort = 3000
