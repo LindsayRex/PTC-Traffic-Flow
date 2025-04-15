@@ -1,18 +1,19 @@
-
 import logging
 import os
 import time
 from pathlib import Path
+import streamlit as st #Import streamlit
 
-def setup_logging(log_dir="logs", level=logging.DEBUG):
-    """Configures verbose file logging using UTF-8 encoding."""
+def setup_logging():
+    # Get logging configuration from secrets
+    log_config = st.secrets.get("logging", {})
+    level = getattr(logging, log_config.get("level", "INFO"))
+    file_path = log_config.get("file_path", "logs/app.log")
+
     try:
         # Create logs directory if it doesn't exist
-        log_dir = Path(log_dir)
+        log_dir = Path(file_path).parent
         log_dir.mkdir(exist_ok=True)
-        
-        timestamp = time.strftime("%Y%m%d_%H%M%S")
-        log_filename = log_dir / f"traffic_data_{timestamp}.log"
 
         # Configure root logger for file output
         logging.basicConfig(
@@ -20,7 +21,7 @@ def setup_logging(log_dir="logs", level=logging.DEBUG):
             format='%(asctime)s - %(name)-25s - %(levelname)-8s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S',
             handlers=[
-                logging.FileHandler(str(log_filename), mode='w', encoding='utf-8'),
+                logging.FileHandler(str(file_path), mode='w', encoding='utf-8'),
             ],
             force=True
         )
@@ -32,7 +33,7 @@ def setup_logging(log_dir="logs", level=logging.DEBUG):
 
         # Log initial messages
         logging.info(f"--- Logging Initialized (Level: {logging.getLevelName(level)}, Encoding: UTF-8) ---")
-        logging.info(f"Log file: {log_filename}")
+        logging.info(f"Log file: {file_path}")
         logging.info("----------------------------------------------------------------------")
 
     except Exception as e:

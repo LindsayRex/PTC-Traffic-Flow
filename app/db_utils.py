@@ -32,9 +32,26 @@ from models import Base, Station, HourlyCount
 def get_engine():
     """Creates a SQLAlchemy engine using Streamlit secrets."""
     try:
-        # Use Streamlit's built-in connection handling if available (>=1.30)
-        if hasattr(st, 'connection') and 'postgres' in st.secrets:
-             conn = st.connection("postgres", type="sql")
+        if not st.secrets.get("database"):
+            st.error("Database configuration not found in secrets.")
+            return None
+            
+        db_config = st.secrets.database
+        db_url = sqlalchemy.engine.URL.create(
+            drivername="postgresql+psycopg2",
+            username=db_config.get("username"),
+            password=db_config.get("password"),
+            host=db_config.get("host"),
+            port=db_config.get("port"),
+            database=db_config.get("database")
+        )
+        
+        return create_engine(
+            db_url,
+            pool_size=5,
+            max_overflow=10,
+            echo=st.secrets.environment.get("debug", False)
+        )
              # Note: Accessing the underlying engine might vary slightly depending
              # on the exact Streamlit version and implementation details.
              # This is one way, adapt if needed.
