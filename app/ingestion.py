@@ -1,3 +1,4 @@
+
 import pandas as pd
 from sqlalchemy import create_engine
 import logging
@@ -20,8 +21,8 @@ def ingest_hourly_data():
     session = Session()
 
     try:
-        # Read CSV file
-        df = pd.read_csv('/app/data/road_traffic_counts_hourly_sample_0.csv')
+        # Read CSV file using relative path
+        df = pd.read_csv('./app/data/road_traffic_counts_hourly_sample_0.csv')
 
         # Process each row
         records_processed = 0
