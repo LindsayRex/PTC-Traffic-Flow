@@ -1,0 +1,57 @@
+**1. Database Data Model (PostgreSQL)**  STATUS =  NOT IMPLEMENTED 
+Objective:  
+
+use SQLAlchemy to interact with the database at all times, no 'native postgres
+hard coded' SQL commands or quearies. Use SQLAlchemy.  
+
+
+
+stations Table: Stores static station metadata.
+station_key (INTEGER, Primary Key) - Unique identifier used across tables.
+station_id (VARCHAR) - The public-facing station ID.
+name (VARCHAR) - Station name description.
+road_name (VARCHAR) - Main road name.
+full_name (VARCHAR) - Detailed descriptive name.
+common_road_name (VARCHAR) - Localised road name.
+lga (VARCHAR) - Local Government Area.
+suburb (VARCHAR) - Suburb name.
+post_code (VARCHAR)
+road_functional_hierarchy (VARCHAR) - e.g., 'Arterial Road', 'Local Road'.
+lane_count (VARCHAR) - e.g., 'OneLane', 'TwoOrMoreLanes'.
+road_classification_type (VARCHAR) - e.g., 'Road', 'Highway', 'Street'.
+device_type (VARCHAR) - e.g., 'Tirtl', 'Trafficorder Tube Axlepair Counter'.
+permanent_station (BOOLEAN) - True if permanent, False if sample.
+vehicle_classifier (BOOLEAN) - True if it classifies vehicles.
+heavy_vehicle_checking_station (BOOLEAN)
+quality_rating (INTEGER) - Numerical quality score (e.g., 1-5).
+wgs84_latitude (FLOAT)
+wgs84_longitude (FLOAT)
+location_geom (GEOMETRY(Point, 4326)) - Geospatial point using WGS84 SRID.
+Other relevant columns from road_traffic_counts_station_reference.csv...
+Indexes: Create indexes on station_key, station_id, lga, suburb, road_name, road_functional_hierarchy. Create a GiST index on location_geom for efficient spatial queries.
+hourly_counts Table: Stores the time-series traffic data.
+count_id (SERIAL, Primary Key) - Auto-incrementing unique ID for the row.
+station_key (INTEGER, Foreign Key references stations(station_key))
+traffic_direction_seq (INTEGER) - Refers to direction (Refer 5.2 in docs).
+cardinal_direction_seq (INTEGER) - Refers to cardinal direction (Refer 5.3 in docs).
+classification_seq (INTEGER) - Refers to vehicle class (Refer 5.4 in docs: 0=Unclassified, 1=All, 2=Light, 3=Heavy).
+count_date (DATE) - The date of the count.
+year (INTEGER) - Extracted year from date.
+month (INTEGER) - Extracted month from date.
+day_of_week (INTEGER) - 1 (Mon) to 7 (Sun).
+is_public_holiday (BOOLEAN)
+is_school_holiday (BOOLEAN)
+hour_00 (INTEGER) - Traffic volume 00:00-00:59
+hour_01 (INTEGER) - Traffic volume 01:00-01:59
+... (up to hour_23) ...
+hour_23 (INTEGER) - Traffic volume 23:00-23:59
+daily_total (INTEGER) - Sum of hourly volumes for the day/class/direction.
+Indexes: Create indexes on station_key, count_date, classification_seq, year, month, day_of_week.
+
+
+PostGIS: Using GEOMETRY(geometry_type='POINT', srid=4326) requires the PostGIS extension to be enabled in your database (CREATE EXTENSION IF NOT EXISTS postgis;). This allows for efficient spatial indexing and queries later if needed. 
+We'll need two main tables.
+
+Nullability: Set nullable=False for columns that must have a value (like count_date). Adjust based on your actual data constraints.
+Indexes: Added index=True to columns frequently used in WHERE clauses or JOIN conditions.
+Relationships: relationship defines how Station and HourlyCount objects are linked. back_populates enables accessing the related objects from both sides (e.g., station.hourly_counts and hourly_count.station).

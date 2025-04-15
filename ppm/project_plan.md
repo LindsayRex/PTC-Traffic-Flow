@@ -1,8 +1,6 @@
 **1. Database Data Model (PostgreSQL)**  STATUS =  NOT IMPLEMENTED 
 Objective:  
 
-
-
 use SQLAlchemy to interact with the database at all times, no 'native postgres
 hard coded' SQL commands or quearies. Use SQLAlchemy.  
 
