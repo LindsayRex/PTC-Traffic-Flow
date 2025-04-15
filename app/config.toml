@@ -1,0 +1,5 @@
+[theme]
+primaryColor = "#E600E6"  # Magenta (230, 0, 230) in hex
+backgroundColor = "#000000"  # Black
+secondaryBackgroundColor = "#969696"  # Light Gray (150, 150, 150)
+textColor = "#FFFFFF"  # White
