@@ -36,15 +36,20 @@ def get_engine():
             st.error("Database configuration not found in secrets.")
             return None
             
-        db_config = st.secrets.database
-        db_url = sqlalchemy.engine.URL.create(
-            drivername="postgresql+psycopg2",
-            username=db_config.get("username"),
-            password=db_config.get("password"),
-            host=db_config.get("host"),
-            port=db_config.get("port"),
-            database=db_config.get("database")
-        )
+        # Use environment variables set by Replit Secrets
+        import os
+        
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            # Fallback to individual components if DATABASE_URL not set
+            db_url = sqlalchemy.engine.URL.create(
+                drivername="postgresql+psycopg2",
+                username=os.getenv("PGUSER"),
+                password=os.getenv("PGPASSWORD"),
+                host=os.getenv("PGHOST"),
+                port=os.getenv("PGPORT"),
+                database=os.getenv("PGDATABASE")
+            )
         
         return create_engine(
             db_url,
