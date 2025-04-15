@@ -285,6 +285,109 @@ def get_hourly_data_for_stations(
             st.error(f"Error fetching hourly data: {e}")
             return pd.DataFrame()
 
-# --- Add more specific query functions as needed ---
-# Example: Function to get AADT (might be complex due to quality rules)
-# Example: Function to get data pre-aggregated by month/year if needed often
+# --- Data Transformation Functions ---
+
+@st.cache_data(ttl=3600)
+def calculate_peak_volumes(df: pd.DataFrame) -> Dict[str, float]:
+    """Calculate AM and PM peak volumes."""
+    am_cols = [f'hour_{str(h).zfill(2)}' for h in range(6, 10)]
+    pm_cols = [f'hour_{str(h).zfill(2)}' for h in range(15, 19)]
+    
+    return {
+        'am_peak': df[am_cols].sum().sum() / len(df) if not df.empty else 0,
+        'pm_peak': df[pm_cols].sum().sum() / len(df) if not df.empty else 0
+    }
+
+@st.cache_data(ttl=3600)
+def calculate_hourly_profile(df: pd.DataFrame, weekdays_only: bool = False) -> pd.DataFrame:
+    """Calculate average hourly profile."""
+    if weekdays_only:
+        df = df[df['day_of_week'].between(1, 5)]
+    
+    hour_cols = [f'hour_{str(h).zfill(2)}' for h in range(24)]
+    hourly_means = df[hour_cols].mean()
+    
+    return pd.DataFrame({
+        'hour': range(24),
+        'average_volume': hourly_means.values
+    })
+
+@st.cache_data(ttl=3600)
+def calculate_aadt(conn, station_key: int, year: int) -> float:
+    """Calculate Annual Average Daily Traffic."""
+    with get_db_session() as session:
+        if not session: return 0.0
+        
+        # Get all daily totals for the year where we have at least 19 hours of data
+        stmt = select(HourlyCount.daily_total).where(
+            and_(
+                HourlyCount.station_key == station_key,
+                HourlyCount.year == year,
+                HourlyCount.classification_seq == 1,
+                # Count non-null hours to ensure data quality
+                func.count(*(getattr(HourlyCount, f'hour_{str(h).zfill(2)}') 
+                           for h in range(24))) >= 19
+            )
+        ).group_by(HourlyCount.count_date)
+        
+        df = pd.read_sql(stmt, session.bind)
+        return df['daily_total'].mean() if not df.empty else 0.0
+
+@st.cache_data(ttl=3600)
+def calculate_aawt(conn, station_key: int, year: int) -> float:
+    """Calculate Average Annual Weekday Traffic."""
+    with get_db_session() as session:
+        if not session: return 0.0
+        
+        stmt = select(HourlyCount.daily_total).where(
+            and_(
+                HourlyCount.station_key == station_key,
+                HourlyCount.year == year,
+                HourlyCount.classification_seq == 1,
+                HourlyCount.day_of_week.between(1, 5),
+                HourlyCount.is_public_holiday == false()
+            )
+        )
+        
+        df = pd.read_sql(stmt, session.bind)
+        return df['daily_total'].mean() if not df.empty else 0.0
+
+@st.cache_data(ttl=3600)
+def calculate_heavy_vehicle_percentage(conn, station_key: int, start_date: datetime.date, end_date: datetime.date) -> float:
+    """Calculate Heavy Vehicle Percentage for a period."""
+    with get_db_session() as session:
+        if not session: return 0.0
+        
+        # Get totals for both all vehicles (seq=1) and heavy vehicles (seq=3)
+        volumes = {}
+        for seq in [1, 3]:
+            stmt = select(func.sum(HourlyCount.daily_total)).where(
+                and_(
+                    HourlyCount.station_key == station_key,
+                    HourlyCount.classification_seq == seq,
+                    HourlyCount.count_date.between(start_date, end_date)
+                )
+            )
+            result = session.scalar(stmt)
+            volumes[seq] = float(result) if result else 0.0
+            
+        return (volumes[3] / volumes[1] * 100) if volumes[1] > 0 else 0.0
+
+# Function to update geospatial data for stations
+def update_station_geometries(conn):
+    """Update PostGIS geometries for all stations."""
+    with get_db_session() as session:
+        if not session: return
+        
+        stmt = update(Station).values(
+            location_geom=func.ST_SetSRID(
+                func.ST_MakePoint(
+                    Station.wgs84_longitude,
+                    Station.wgs84_latitude
+                ),
+                4326
+            )
+        ).where(Station.location_geom.is_(None))
+        
+        session.execute(stmt)
+        session.commit()
