@@ -12,7 +12,7 @@ import os
 from typing import List, Optional, Tuple, Dict, Any
 
 # Import your models
-from .models import Base, Station, HourlyCount
+from models import Base, Station, HourlyCount
 
 # --- Database Connection Setup ---
 
