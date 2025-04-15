@@ -3,7 +3,7 @@
 
 import streamlit as st
 import logging
-from . import log_config
+from log_config import setup_logging
 
 # Initialize environment from secrets
 if not st.secrets.get("environment"):
