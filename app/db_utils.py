@@ -3,6 +3,7 @@ import streamlit as st
 import logging
 import pandas as pd
 import sqlalchemy
+import datetime
 from sqlalchemy import create_engine, select, func, distinct, text, and_, or_, true, false
 from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 @st.cache_resource
 def get_engine():
-    """Creates a SQLAlchemy engine using Replit secrets."""
+    """Creates a SQLAlchemy engine using Streamlit secrets."""
     try:
         # Use DATABASE_URL from Replit Secrets
         db_url = os.getenv("DATABASE_URL")
@@ -22,11 +23,18 @@ def get_engine():
             st.error("DATABASE_URL not found in environment")
             return None
 
+        debug_value = st.secrets.environment.get("debug", False)
+        # Convert string "true" or "false" to boolean if necessary
+        if isinstance(debug_value, str):
+            debug = debug_value.lower() == "true"
+        else:
+            debug = bool(debug_value)  # Ensure it's a boolean
+
         return create_engine(
             db_url,
             pool_size=5,
             max_overflow=10,
-            echo=st.secrets.environment.get("debug", False)
+            echo=debug
         )
     except Exception as e:
         st.error(f"Failed to create database engine: {e}")

@@ -61,7 +61,7 @@ STATUS =  IMPLEMENTED
 
 **2. Data Transformations & Calculated Columns use Python & Panda sqlalchemy** 
 
-STATUS =  NOT IMPLEMENTED
+STATUS =  IMPLEMENTED
 
 
 Peak Hour Volumes: Dynamically calculate sums for AM (hour_06 to hour_09) and PM (hour_15 to hour_18) peaks based on filters.
@@ -72,7 +72,9 @@ Heavy Vehicle Percentage: (Sum of daily_total where classification_seq=3) / (Sum
 Geospatial Data: Ensure wgs84_latitude and wgs84_longitude are used to create the location_geom point data during data loading.
 
 
+
 **Add uniform loging accross app**  STATUS =  IMPLEMENTED 
+
 
 **Add remote shh access with secure keys**   STATUS =  IMPLEMENTED 
 
@@ -112,7 +114,7 @@ app/gfx/ptc-logo-white.png
 
 **Feature 1: Traffic Station Profile Dashboard **
 
-STATUS = NOT IMPLEMENTED
+STATUS = IMPLEMENTED
 
 Objective: Provide a quick, comprehensive view of a single traffic count station's characteristics and recent/typical trends.
 UI Components (Panel within Streamlit):
