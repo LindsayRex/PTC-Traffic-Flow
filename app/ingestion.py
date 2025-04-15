@@ -1,5 +1,8 @@
 import pandas as pd
 from sqlalchemy import create_engine
+import logging
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import sessionmaker
 import os
 from models import Base, Station, HourlyCount
