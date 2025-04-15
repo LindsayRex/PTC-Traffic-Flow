@@ -161,8 +161,8 @@ cython_debug/
 #.idea/
 
 #streamlit config particulars
-sercrets.toml
-
+secrets.toml
+attached_assets/
 
 # ignore folder contents
 logs/*
