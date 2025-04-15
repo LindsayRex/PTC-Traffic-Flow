@@ -48,7 +48,13 @@ hour_23 (INTEGER) - Traffic volume 23:00-23:59
 daily_total (INTEGER) - Sum of hourly volumes for the day/class/direction.
 Indexes: Create indexes on station_key, count_date, classification_seq, year, month, day_of_week.
 
-**2. Data Transformations & Calculated Columns (Conceptual - implemented in Python/SQL as needed)** STATUS =  NOT IMPLEMENTED
+
+
+**2. Data Transformations & Calculated Columns use Python & Panda sqlalchemy**
+
+STATUS =  NOT IMPLEMENTED
+
+
 Peak Hour Volumes: Dynamically calculate sums for AM (hour_06 to hour_09) and PM (hour_15 to hour_18) peaks based on filters.
 Average Hourly Profile: Calculate the average volume for each hour (00-23) over a selected period (e.g., month, year, weekdays, weekends).
 AADT (Annual Average Daily Traffic): Calculate average daily_total over a full year, applying data quality rules (e.g., requiring >=19 hours of data per day counted). This is more complex and might be pre-calculated or calculated carefully on demand.
@@ -57,7 +63,8 @@ Heavy Vehicle Percentage: (Sum of daily_total where classification_seq=3) / (Sum
 Geospatial Data: Ensure wgs84_latitude and wgs84_longitude are used to create the location_geom point data during data loading.
 
 1. Streamlit App Structure 
-   
+
+Objective:  
 Create basic  Streamlit eweb page with a simple. Each feature below could be a page or a section within a page. Use st.sidebar for global filters like date range or LGA selection where applicable.
 
 Colour theme:
