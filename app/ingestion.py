@@ -22,7 +22,7 @@ def ingest_hourly_data():
 
     try:
         # Read CSV file using relative path
-        df = pd.read_csv('./app/data/road_traffic_counts_hourly_sample_0.csv')
+        df = pd.read_csv('./app/data/road_traffic_counts_hourly_sample_0.csv', low_memory=False)
 
         # Process each row
         records_processed = 0
