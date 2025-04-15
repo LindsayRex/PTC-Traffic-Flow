@@ -5,11 +5,29 @@ import streamlit as st
 import logging
 from . import log_config
 
+# Initialize environment from secrets
+if not st.secrets.get("environment"):
+    st.error("Environment configuration not found in secrets")
+    st.stop()
+
 # Setup logging
-log_config.setup_logging(level=logging.INFO)
+log_config.setup_logging()
 logger = logging.getLogger(__name__)
 
-logger.info("Starting PTC Traffic Data Explorer application")
+logger.info(f"Starting PTC Traffic Data Explorer application in {st.secrets.environment.get('type', 'development')} mode")
+
+# Configure debug mode
+st.set_page_config(
+    page_title="PTC Traffic Data Explorer",
+    page_icon="app/gfx/ptc-logo-white.png",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': None
+    } if not st.secrets.environment.get("debug", False) else None
+)
 import panel as pn
 import pandas as pd
 from pathlib import Path
