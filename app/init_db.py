@@ -54,15 +54,22 @@ def init_db():
             try:
                 print("\nImporting station reference data...")
                 logger.info("Starting station reference data import")
-                df_stations = pd.read_csv('app/data/road_traffic_counts_station_reference.csv')
-                stations_count = 0
+                try:
+                    df_stations = pd.read_csv('app/data/road_traffic_counts_station_reference.csv')
+                    logger.info(f"Read {len(df_stations)} station records from CSV")
+                    print(f"Processing {len(df_stations)} station records...")
+                    stations_count = 0
 
-                for _, row in df_stations.iterrows():
-                    existing = session.query(Station).filter_by(station_key=row.get('station_key')).first()
-                    if existing:
-                        continue
+                    for idx, row in df_stations.iterrows():
+                        try:
+                            if idx % 100 == 0:
+                                print(f"Processed {idx}/{len(df_stations)} records...")
+                                
+                            existing = session.query(Station).filter_by(station_key=row.get('station_key')).first()
+                            if existing:
+                                continue
 
-                    station = Station(
+                            station = Station(
                         station_key=row.get('station_key'),
                         station_id=str(row.get('station_id')),
                         name=str(row.get('name')),
@@ -84,11 +91,29 @@ def init_db():
                         wgs84_longitude=float(row.get('wgs84_longitude', 0))
                     )
                     session.add(station)
-                    stations_count += 1
+                            stations_count += 1
+                            
+                            # Commit in smaller batches to avoid memory issues
+                            if stations_count % 100 == 0:
+                                session.commit()
+                                print(f"Committed {stations_count} stations")
+                                
+                        except Exception as row_error:
+                            logger.error(f"Error processing station record {idx}: {row_error}")
+                            print(f"Error processing station record {idx}: {row_error}")
+                            continue
 
-                session.commit()
-                print(f"Successfully imported {stations_count} stations")
-                logger.info(f"Imported {stations_count} stations")
+                    # Final commit for remaining records
+                    session.commit()
+                    print(f"Successfully imported {stations_count} stations")
+                    logger.info(f"Imported {stations_count} stations")
+                    
+                except Exception as e:
+                    error_msg = f"Error during station data import: {str(e)}"
+                    print(f"\nERROR: {error_msg}")
+                    logger.error(error_msg)
+                    session.rollback()
+                    raise
 
                 print("\nUpdating station geometries...")
                 logger.info("Updating station geometries")
