@@ -1,93 +1,48 @@
 # app/db_utils.py
 import streamlit as st
 import logging
-
-logger = logging.getLogger(__name__)
 import pandas as pd
 import sqlalchemy
 import datetime
 from sqlalchemy import create_engine, select, func, distinct, text, and_, or_, true, false
-from sqlalchemy.orm import sessionmaker, Session, joinedload, selectinload
+from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
 import os
 from typing import List, Optional, Tuple, Dict, Any
-
-# Import your models
 from models import Base, Station, HourlyCount
 
-# --- Database Connection Setup ---
+logger = logging.getLogger(__name__)
 
-# Use Streamlit secrets to store database credentials
-# Example secrets.toml structure:
-# [connections.postgres]
-# dialect = "postgresql"
-# host = "your_host"
-# port = 5432
-# database = "your_db"
-# username = "your_user"
-# password = "your_password"
-
-# Use st.cache_resource to create the engine only once per session/process
 @st.cache_resource
 def get_engine():
     """Creates a SQLAlchemy engine using Streamlit secrets."""
     try:
-        if not st.secrets.get("database"):
-            st.error("Database configuration not found in secrets.")
+        # Use DATABASE_URL from Replit Secrets
+        db_url = os.getenv("DATABASE_URL")
+        if not db_url:
+            st.error("DATABASE_URL not found in environment")
             return None
-            
-        db_config = st.secrets.database
-        db_url = sqlalchemy.engine.URL.create(
-            drivername="postgresql+psycopg2",
-            username=db_config.get("username"),
-            password=db_config.get("password"),
-            host=db_config.get("host"),
-            port=db_config.get("port"),
-            database=db_config.get("database")
-        )
-        
+
+        debug_value = st.secrets.environment.get("debug", False)
+        # Convert string "true" or "false" to boolean if necessary
+        if isinstance(debug_value, str):
+            debug = debug_value.lower() == "true"
+        else:
+            debug = bool(debug_value)  # Ensure it's a boolean
+
         return create_engine(
             db_url,
             pool_size=5,
             max_overflow=10,
-            echo=st.secrets.environment.get("debug", False)
+            echo=debug
         )
-             # Note: Accessing the underlying engine might vary slightly depending
-             # on the exact Streamlit version and implementation details.
-             # This is one way, adapt if needed.
-             if hasattr(conn, 'engine'):
-                 return conn.engine
-             elif hasattr(conn, '_instance') and hasattr(conn._instance, 'engine'):
-                 return conn._instance.engine
-             else:
-                 st.error("Could not retrieve engine from st.connection. Falling back.")
-                 # Fallback if engine access isn't direct
-                 db_url = sqlalchemy.engine.URL.create(
-                    drivername=st.secrets["connections"]["postgres"]["dialect"] + "+psycopg2", # Ensure psycopg2 driver
-                    username=st.secrets["connections"]["postgres"]["username"],
-                    password=st.secrets["connections"]["postgres"]["password"],
-                    host=st.secrets["connections"]["postgres"]["host"],
-                    port=st.secrets["connections"]["postgres"]["port"],
-                    database=st.secrets["connections"]["postgres"]["database"],
-                 )
-                 return create_engine(db_url, pool_size=5, max_overflow=10, echo=False) # Adjust pool settings, echo=True for debugging
-
-        # Fallback for older Streamlit or different secret structure
-        else:
-            st.warning("Using fallback environment variables for DB connection.")
-            db_url = os.environ.get("DATABASE_URL") # e.g., postgresql+psycopg2://user:pass@host:port/db
-            if not db_url:
-                st.error("DATABASE_URL environment variable not set.")
-                return None
-            return create_engine(db_url, pool_size=5, max_overflow=10, echo=False)
-
     except Exception as e:
         st.error(f"Failed to create database engine: {e}")
+        logger.error(f"Database connection error: {e}")
         return None
 
 engine = get_engine()
 
-# Use st.cache_resource for the session factory
 @st.cache_resource
 def get_session_factory():
     """Creates a session factory."""
@@ -95,8 +50,6 @@ def get_session_factory():
         st.error("Database engine not initialized.")
         return None
     return sessionmaker(bind=engine)
-
-SessionFactory = get_session_factory()
 
 @contextmanager
 def get_db_session() -> Session:
@@ -152,6 +105,7 @@ def get_all_station_metadata(_conn) -> pd.DataFrame:
         except Exception as e:
             st.error(f"Error fetching all station metadata: {e}")
             return pd.DataFrame()
+
 
 
 @st.cache_data(ttl=3600)
@@ -412,3 +366,5 @@ def update_station_geometries(conn):
         
         session.execute(stmt)
         session.commit()
+
+SessionFactory = get_session_factory()
