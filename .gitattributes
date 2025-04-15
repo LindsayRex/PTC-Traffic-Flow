@@ -1,3 +1,7 @@
 # Auto detect text files and perform LF normalization
+# .gitattributes is a file that tells Git how to handle certain files in the repository.
+# It is used to define attributes for paths in the repository. 
+# Version 1.0.0
+
 * text=auto
  
