@@ -1,6 +1,9 @@
 
 import os
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from models import Base, Station, HourlyCount

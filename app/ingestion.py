@@ -1,5 +1,8 @@
 import pandas as pd
 from sqlalchemy import create_engine
+import logging
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import sessionmaker
 import os
 from models import Base, Station, HourlyCount
@@ -18,7 +21,7 @@ def ingest_hourly_data():
 
     try:
         # Read CSV file
-        df = pd.read_csv('app/data/road_traffic_counts_hourly_sample_0.csv')
+        df = pd.read_csv('/app/data/road_traffic_counts_hourly_sample_0.csv')
 
         # Process each row
         records_processed = 0

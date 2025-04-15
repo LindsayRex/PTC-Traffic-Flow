@@ -1,5 +1,8 @@
 # app/db_utils.py
 import streamlit as st
+import logging
+
+logger = logging.getLogger(__name__)
 import pandas as pd
 import sqlalchemy
 from sqlalchemy import create_engine, select, func, distinct, text, and_, or_, true, false

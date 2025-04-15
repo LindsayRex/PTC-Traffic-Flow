@@ -51,14 +51,15 @@ Indexes: Create indexes on station_key, count_date, classification_seq, year, mo
 
 PostGIS: Using GEOMETRY(geometry_type='POINT', srid=4326) requires the PostGIS extension to be enabled in your database (CREATE EXTENSION IF NOT EXISTS postgis;). This allows for efficient spatial indexing and queries later if needed. 
 We'll need two main tables.
+STATUS =  IMPLEMENTED 
+
 
 Nullability: Set nullable=False for columns that must have a value (like count_date). Adjust based on your actual data constraints.
 Indexes: Added index=True to columns frequently used in WHERE clauses or JOIN conditions.
 Relationships: relationship defines how Station and HourlyCount objects are linked. back_populates enables accessing the related objects from both sides (e.g., station.hourly_counts and hourly_count.station).
+STATUS =  IMPLEMENTED 
 
-
-
-**2. Data Transformations & Calculated Columns use Python & Panda sqlalchemy**
+**2. Data Transformations & Calculated Columns use Python & Panda sqlalchemy** 
 
 STATUS =  NOT IMPLEMENTED
 
@@ -71,8 +72,9 @@ Heavy Vehicle Percentage: (Sum of daily_total where classification_seq=3) / (Sum
 Geospatial Data: Ensure wgs84_latitude and wgs84_longitude are used to create the location_geom point data during data loading.
 
 
+**Add uniform loging accross app**  STATUS =  IMPLEMENTED 
 
-Add uniform loging accross ap 
+**Add remote shh access with secure keys**   STATUS =  IMPLEMENTED 
 
 
 log_config.setup_logging(level=logging.INFO) # Set desired log level

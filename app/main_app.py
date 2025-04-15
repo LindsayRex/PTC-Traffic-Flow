@@ -2,6 +2,14 @@
 # It uses Streamlit for the web interface and Panel for interactive components.
 
 import streamlit as st
+import logging
+from . import log_config
+
+# Setup logging
+log_config.setup_logging(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+logger.info("Starting PTC Traffic Data Explorer application")
 import panel as pn
 import pandas as pd
 from pathlib import Path
