@@ -18,6 +18,9 @@ def init_db():
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
         conn.commit()
 
+    # Drop all existing tables
+    Base.metadata.drop_all(engine)
+    # Create all tables fresh
     Base.metadata.create_all(engine)
     Session = sessionmaker(bind=engine)
     session = Session()
