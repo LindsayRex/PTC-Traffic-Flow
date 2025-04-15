@@ -1,10 +1,12 @@
 **1. Database Data Model (PostgreSQL)**  STATUS =  NOT IMPLEMENTED 
-Task Create 
+Objective:  
 
-We'll need two main tables.
+
 
 use SQLAlchemy to interact with the database at all times, no 'native postgres
 hard coded' SQL commands or quearies. Use SQLAlchemy.  
+
+
 
 stations Table: Stores static station metadata.
 station_key (INTEGER, Primary Key) - Unique identifier used across tables.
@@ -47,6 +49,14 @@ hour_01 (INTEGER) - Traffic volume 01:00-01:59
 hour_23 (INTEGER) - Traffic volume 23:00-23:59
 daily_total (INTEGER) - Sum of hourly volumes for the day/class/direction.
 Indexes: Create indexes on station_key, count_date, classification_seq, year, month, day_of_week.
+
+
+PostGIS: Using GEOMETRY(geometry_type='POINT', srid=4326) requires the PostGIS extension to be enabled in your database (CREATE EXTENSION IF NOT EXISTS postgis;). This allows for efficient spatial indexing and queries later if needed. 
+We'll need two main tables.
+
+Nullability: Set nullable=False for columns that must have a value (like count_date). Adjust based on your actual data constraints.
+Indexes: Added index=True to columns frequently used in WHERE clauses or JOIN conditions.
+Relationships: relationship defines how Station and HourlyCount objects are linked. back_populates enables accessing the related objects from both sides (e.g., station.hourly_counts and hourly_count.station).
 
 
 
