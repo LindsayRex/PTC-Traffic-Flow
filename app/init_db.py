@@ -1,13 +1,17 @@
 
 import os
-import datetime
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Station, HourlyCount
 import pandas as pd
+from geoalchemy2.functions import ST_MakePoint
+from sqlalchemy.sql import text
 
 def init_db():
+    # Get database URL from environment or use default
     DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/traffic_db')
+    
+    # Create engine
     engine = create_engine(DATABASE_URL)
     
     # Enable PostGIS
@@ -15,7 +19,10 @@ def init_db():
         conn.execute(text("CREATE EXTENSION IF NOT EXISTS postgis;"))
         conn.commit()
 
+    # Create tables
     Base.metadata.create_all(engine)
+    
+    # Create session
     Session = sessionmaker(bind=engine)
     session = Session()
 
@@ -23,11 +30,12 @@ def init_db():
         # Load station reference data
         df_stations = pd.read_csv('app/data/road_traffic_counts_station_reference.csv')
         
-        # Load and transform stations
+        # Transform and insert stations
         for _, row in df_stations.iterrows():
+            # Check if station already exists
             existing = session.query(Station).filter_by(station_key=row.get('station_key')).first()
             if existing:
-                continue
+                continue  # Skip if already exists
                 
             station = Station(
                 station_key=row.get('station_key'),
@@ -51,10 +59,11 @@ def init_db():
                 wgs84_longitude=float(row.get('wgs84_longitude', 0))
             )
             session.add(station)
-
+        
+        # Commit the initial data
         session.commit()
         
-        # Update geometries
+        # Update geometries for all stations
         stmt = text("""
             UPDATE stations 
             SET location_geom = ST_SetSRID(ST_MakePoint(wgs84_longitude, wgs84_latitude), 4326)
@@ -62,45 +71,8 @@ def init_db():
         """)
         session.execute(stmt)
         session.commit()
-
-        # Load hourly counts data (if file exists)
-        df_counts = pd.read_csv('app/data/hourly_counts.csv')
         
-        # Process and insert hourly counts
-        for _, row in df_counts.iterrows():
-            count_date = pd.to_datetime(row['count_date']).date()
-            
-            # Calculate derived fields
-            hour_cols = [f'hour_{str(h).zfill(2)}' for h in range(24)]
-            daily_total = sum(row.get(col, 0) for col in hour_cols)
-            
-            # AM/PM peak calculations
-            am_peak = sum(row.get(f'hour_{str(h).zfill(2)}', 0) for h in range(6, 10))
-            pm_peak = sum(row.get(f'hour_{str(h).zfill(2)}', 0) for h in range(15, 19))
-            
-            count = HourlyCount(
-                station_key=row['station_key'],
-                traffic_direction_seq=row['traffic_direction_seq'],
-                cardinal_direction_seq=row.get('cardinal_direction_seq'),
-                classification_seq=row['classification_seq'],
-                count_date=count_date,
-                year=count_date.year,
-                month=count_date.month,
-                day_of_week=count_date.isoweekday(),
-                is_public_holiday=bool(row.get('is_public_holiday', False)),
-                is_school_holiday=bool(row.get('is_school_holiday', False)),
-                daily_total=daily_total
-            )
-            
-            # Add hourly values
-            for hour in range(24):
-                hour_col = f'hour_{str(hour).zfill(2)}'
-                setattr(count, hour_col, row.get(hour_col, 0))
-            
-            session.add(count)
-            
-        session.commit()
-        print("Successfully imported station and hourly count data")
+        print("Successfully imported station data and updated geometries")
         
     except Exception as e:
         print(f"Error importing data: {e}")
