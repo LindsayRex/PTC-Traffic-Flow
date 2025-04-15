@@ -7,7 +7,7 @@ import streamlit as st #Import streamlit
 def setup_logging():
     # Get logging configuration from secrets
     log_config = st.secrets.get("logging", {})
-    level = getattr(logging, log_config.get("level", "INFO"))
+    level = getattr(logging, log_config.get("level", "WARNING"))
     file_path = log_config.get("file_path", "logs/app.log")
 
     try:

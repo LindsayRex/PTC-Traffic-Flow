@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from models import Base, Station, HourlyCount
 import pandas as pd
 from geoalchemy2.functions import ST_MakePoint
+from geoalchemy2 import WKTElement
 
 # Set up logging
 setup_logging()
@@ -62,45 +63,61 @@ def init_db():
 
                     for idx, row in df_stations.iterrows():
                         try:
-                            if idx % 100 == 0:
+                            if idx % 200 == 0:
                                 print(f"Processed {idx}/{len(df_stations)} records...")
                                 
                             existing = session.query(Station).filter_by(station_key=row.get('station_key')).first()
                             if existing:
                                 continue
+                            
+                            # Extract lat/lon and create WKT representation
+                            latitude = row.get('wgs84_latitude')
+                            longitude = row.get('wgs84_longitude')
+
+                            # Skip if lat or lon is missing or invalid
+                            if latitude is None or longitude is None:
+                                logger.warning(f"Skipping row due to invalid latitude or longitude: {row}")
+                                continue
+
+                            # Create WKT representation of the point geometry
+                            # Rounding to reduce precision
+                            wkt_point = f"POINT({round(longitude, 6)} {round(latitude, 6)})"
+                            location_geom = WKTElement(wkt_point, srid=4326)
 
                             station = Station(
-                        station_key=row.get('station_key'),
-                        station_id=str(row.get('station_id')),
-                        name=str(row.get('name')),
-                        road_name=str(row.get('road_name')),
-                        full_name=str(row.get('full_name')),
-                        common_road_name=str(row.get('common_road_name')),
-                        lga=str(row.get('lga')),
-                        suburb=str(row.get('suburb')),
-                        post_code=str(row.get('post_code')),
-                        road_functional_hierarchy=str(row.get('road_functional_hierarchy')),
-                        lane_count=str(row.get('lane_count')),
-                        road_classification_type=str(row.get('road_classification_type')),
-                        device_type=str(row.get('device_type')),
-                        permanent_station=bool(row.get('permanent_station', False)),
-                        vehicle_classifier=bool(row.get('vehicle_classifier', False)),
-                        heavy_vehicle_checking_station=bool(row.get('heavy_vehicle_checking_station', False)),
-                        quality_rating=int(row.get('quality_rating', 0)),
-                        wgs84_latitude=float(row.get('wgs84_latitude', 0)),
-                        wgs84_longitude=float(row.get('wgs84_longitude', 0))
-                    )
-                    session.add(station)
+                                station_key=row.get('station_key'),
+                                station_id=str(row.get('station_id')),
+                                name=str(row.get('name')),
+                                road_name=str(row.get('road_name')),
+                                full_name=str(row.get('full_name')),
+                                common_road_name=str(row.get('common_road_name')),
+                                lga=str(row.get('lga')),
+                                suburb=str(row.get('suburb')),
+                                post_code=str(row.get('post_code')),
+                                road_functional_hierarchy=str(row.get('road_functional_hierarchy')),
+                                lane_count=str(row.get('lane_count')),
+                                road_classification_type=str(row.get('road_classification_type')),
+                                device_type=str(row.get('device_type')),
+                                permanent_station=bool(row.get('permanent_station', False)),
+                                vehicle_classifier=bool(row.get('vehicle_classifier', False)),
+                                heavy_vehicle_checking_station=bool(row.get('heavy_vehicle_checking_station', False)),
+                                quality_rating=int(row.get('quality_rating', 0)),
+                                wgs84_latitude=float(row.get('wgs84_latitude', 0)),
+                                wgs84_longitude=float(row.get('wgs84_longitude', 0)),
+                                location_geom=location_geom
+                            )
+                            session.add(station)
                             stations_count += 1
                             
                             # Commit in smaller batches to avoid memory issues
-                            if stations_count % 100 == 0:
+                            if stations_count % 200 == 0:
                                 session.commit()
                                 print(f"Committed {stations_count} stations")
                                 
                         except Exception as row_error:
                             logger.error(f"Error processing station record {idx}: {row_error}")
                             print(f"Error processing station record {idx}: {row_error}")
+                            session.rollback()  # Rollback on individual row error
                             continue
 
                     # Final commit for remaining records
@@ -117,18 +134,18 @@ def init_db():
 
                 print("\nUpdating station geometries...")
                 logger.info("Updating station geometries")
-                stmt = text("""
-                    UPDATE stations 
-                    SET location_geom = ST_SetSRID(ST_MakePoint(wgs84_longitude, wgs84_latitude), 4326)
-                    WHERE location_geom IS NULL
-                """)
-                connection.execute(stmt)
-                connection.commit()
+                #stmt = text("""
+                #    UPDATE stations 
+                #    SET location_geom = ST_SetSRID(ST_MakePoint(wgs84_longitude, wgs84_latitude), 4326)
+                #    WHERE location_geom IS NULL
+                #""")
+                #connection.execute(stmt)
+                #connection.commit()
                 print("Station geometries updated successfully")
 
-                print("\nImporting hourly counts data...")
+                print("\nImporting hourly counts data test data")
                 logger.info("Starting hourly counts import")
-                df_counts = pd.read_csv('app/data/hourly_counts.csv')
+                df_counts = pd.read_csv('app/data/road_traffic_counts_hourly_sample_0.csv')
                 counts_processed = 0
 
                 for _, row in df_counts.iterrows():
@@ -164,7 +181,7 @@ def init_db():
                     session.add(count)
                     counts_processed += 1
 
-                    if counts_processed % 1000 == 0:
+                    if counts_processed % 200 == 0:
                         print(f"Processed {counts_processed} hourly count records...")
                         logger.info(f"Processed {counts_processed} hourly count records")
                         session.commit()
