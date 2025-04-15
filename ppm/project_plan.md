@@ -1,4 +1,4 @@
-**1. Database Data Model (PostgreSQL)**  STATUS =  NOT IMPLEMENTED 
+**1. Database Data Model (PostgreSQL)**  STATUS =  IMPLEMENTED 
 Objective:  
 
 use SQLAlchemy to interact with the database at all times, no 'native postgres
