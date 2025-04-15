@@ -45,6 +45,15 @@ mode = "sequential"
 task = "shell.exec"
 args = "python app/drop_db.py"
 
+[[workflows.workflow]]
+name = "Initialize Database"
+author = 40995054
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "python app/init_db.py"
+
 [[ports]]
 localPort = 8501
 externalPort = 80
@@ -64,3 +73,7 @@ externalPort = 3002
 [[ports]]
 localPort = 8505
 externalPort = 3003
+
+[[ports]]
+localPort = 8506
+externalPort = 4200
