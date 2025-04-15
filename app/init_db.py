@@ -1,24 +1,25 @@
 import os
 import logging
 from log_config import setup_logging
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from models import Base, Station, HourlyCount
+from models import Base, Station
 import pandas as pd
 from geoalchemy2 import WKTElement
+from db_utils import get_engine, get_db_session
+from sqlalchemy import text
 
 # Set up logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
 def init_db():
+    """Initialize the database with station reference data"""
     logger.info("Starting database initialization process")
-    DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/traffic_db')
-    logger.info(f"Using database URL: {DATABASE_URL}")
-    
-    engine = create_engine(DATABASE_URL)
-    logger.info("Database engine created")
+
+    engine = get_engine()
+    if not engine:
+        logger.error("Failed to create database engine")
+        return
 
     try:
         with engine.connect() as connection:
@@ -39,32 +40,32 @@ def init_db():
             Base.metadata.create_all(engine)
             print("New tables created successfully")
 
-            Session = sessionmaker(bind=engine)
-            session = Session(bind=connection)
+            print("\nImporting station reference data...")
+            logger.info("Starting station reference data import")
 
             try:
-                print("\nImporting station reference data...")
-                logger.info("Starting station reference data import")
-                try:
-                    df_stations = pd.read_csv('app/data/road_traffic_counts_station_reference.csv')
-                    logger.info(f"Read {len(df_stations)} station records from CSV")
-                    print(f"Processing {len(df_stations)} station records...")
-                    stations_count = 0
+                df_stations = pd.read_csv('app/data/road_traffic_counts_station_reference.csv')
+                logger.info(f"Read {len(df_stations)} station records from CSV")
+                print(f"Processing {len(df_stations)} station records...")
+                stations_count = 0
+
+                with get_db_session() as session:
+                    if not session:
+                        logger.error("Failed to create database session")
+                        return
 
                     for idx, row in df_stations.iterrows():
                         try:
                             if idx % 500 == 0:
                                 print(f"Processed {idx}/{len(df_stations)} records...")
-                                
+
                             existing = session.query(Station).filter_by(station_key=row.get('station_key')).first()
                             if existing:
                                 continue
-                            
-                            # Extract lat/lon and create WKT representation
+
                             latitude = row.get('wgs84_latitude')
                             longitude = row.get('wgs84_longitude')
 
-                            # Skip if lat or lon is missing or invalid
                             if latitude is None or longitude is None:
                                 logger.warning(f"Skipping row due to invalid latitude or longitude: {row}")
                                 continue
@@ -76,8 +77,6 @@ def init_db():
                                 logger.error(f"Invalid latitude or longitude format in row {idx}: {e}")
                                 continue
 
-                            # Create WKT representation of the point geometry
-                            # Rounding to reduce precision
                             wkt_point = f"POINT({round(longitude, 6)} {round(latitude, 6)})"
                             location_geom = WKTElement(wkt_point, srid=4326)
 
@@ -105,71 +104,29 @@ def init_db():
                             )
                             session.add(station)
                             stations_count += 1
-                            
-                            # Commit in smaller batches to avoid memory issues
+
                             if stations_count % 500 == 0:
                                 session.commit()
                                 print(f"Committed {stations_count} stations")
-                                
+
                         except Exception as row_error:
                             logger.error(f"Error processing station record {idx}: {row_error}")
                             print(f"Error processing station record {idx}: {row_error}")
-                            session.rollback()  # Rollback on individual row error
+                            session.rollback()
                             continue
 
-                    # Final commit for remaining records
                     session.commit()
                     print(f"Successfully imported {stations_count} stations")
                     logger.info(f"Imported {stations_count} stations")
-                    
-                except Exception as e:
-                    error_msg = f"Error during station data import: {str(e)}"
-                    print(f"\nERROR: {error_msg}")
-                    logger.error(error_msg)
-                    session.rollback()
-                    raise
 
-                print("\nUpdating station geometries...")
-                logger.info("Updating station geometries")
-                try:
-                    for station in session.query(Station).filter(Station.location_geom == None).all():
-                        try:
-                            # Ensure latitude and longitude are valid floats
-                            latitude = float(station.wgs84_latitude)
-                            longitude = float(station.wgs84_longitude)
-
-                            # Create WKT representation of the point geometry
-                            wkt_point = f"POINT({round(longitude, 6)} {round(latitude, 6)})"
-                            station.location_geom = WKTElement(wkt_point, srid=4326)
-                            
-                        except (ValueError, TypeError) as e:
-                            logger.error(f"Invalid lat/lon for station {station.station_key}: {e}")
-                            continue  # Skip to the next station
-
-                    session.commit()
-                    print("Station geometries updated successfully")
-                    logger.info("Station geometries updated successfully")
-                except SQLAlchemyError as e:
-                    error_msg = f"SQLAlchemy error during geometry update: {str(e)}"
-                    print(f"\nERROR: {error_msg}")
-                    logger.error(error_msg)
-                    session.rollback()
-
-                print("\nDatabase initialization completed successfully!")
-                logger.info("Database initialization completed successfully")
-
-            except SQLAlchemyError as e:
-                error_msg = f"SQLAlchemy error during data import: {str(e)}"
-                print(f"\nERROR: {error_msg}")
-                logger.error(error_msg)
-                session.rollback()
             except Exception as e:
-                error_msg = f"Error during data import: {str(e)}"
+                error_msg = f"Error during station data import: {str(e)}"
                 print(f"\nERROR: {error_msg}")
                 logger.error(error_msg)
-                session.rollback()
-            finally:
-                session.close()
+                raise
+
+            print("\nDatabase initialization completed successfully!")
+            logger.info("Database initialization completed successfully")
 
     except SQLAlchemyError as e:
         error_msg = f"SQLAlchemy error during database operations: {str(e)}"
@@ -180,8 +137,9 @@ def init_db():
         print(f"\nCRITICAL ERROR: {error_msg}")
         logger.critical(error_msg)
     finally:
-        engine.dispose()
-        logger.info("Database engine disposed")
+        if engine:
+            engine.dispose()
+            logger.info("Database engine disposed")
 
 if __name__ == '__main__':
     init_db()
