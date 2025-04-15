@@ -30,27 +30,39 @@ from models import Base, Station, HourlyCount
 # Use st.cache_resource to create the engine only once per session/process
 @st.cache_resource
 def get_engine():
-    """Creates a SQLAlchemy engine using Streamlit secrets or environment variables."""
+    """Creates a SQLAlchemy engine using Streamlit secrets."""
     try:
-        # Try to get database URL from environment first
-        db_url = os.environ.get("DATABASE_URL")
-        if db_url:
+        # Use Streamlit's built-in connection handling if available (>=1.30)
+        if hasattr(st, 'connection') and 'postgres' in st.secrets:
+             conn = st.connection("postgres", type="sql")
+             # Note: Accessing the underlying engine might vary slightly depending
+             # on the exact Streamlit version and implementation details.
+             # This is one way, adapt if needed.
+             if hasattr(conn, 'engine'):
+                 return conn.engine
+             elif hasattr(conn, '_instance') and hasattr(conn._instance, 'engine'):
+                 return conn._instance.engine
+             else:
+                 st.error("Could not retrieve engine from st.connection. Falling back.")
+                 # Fallback if engine access isn't direct
+                 db_url = sqlalchemy.engine.URL.create(
+                    drivername=st.secrets["connections"]["postgres"]["dialect"] + "+psycopg2", # Ensure psycopg2 driver
+                    username=st.secrets["connections"]["postgres"]["username"],
+                    password=st.secrets["connections"]["postgres"]["password"],
+                    host=st.secrets["connections"]["postgres"]["host"],
+                    port=st.secrets["connections"]["postgres"]["port"],
+                    database=st.secrets["connections"]["postgres"]["database"],
+                 )
+                 return create_engine(db_url, pool_size=5, max_overflow=10, echo=False) # Adjust pool settings, echo=True for debugging
+
+        # Fallback for older Streamlit or different secret structure
+        else:
+            st.warning("Using fallback environment variables for DB connection.")
+            db_url = os.environ.get("DATABASE_URL") # e.g., postgresql+psycopg2://user:pass@host:port/db
+            if not db_url:
+                st.error("DATABASE_URL environment variable not set.")
+                return None
             return create_engine(db_url, pool_size=5, max_overflow=10, echo=False)
-            
-        # Try Streamlit secrets as fallback
-        if hasattr(st, 'secrets') and 'connections' in st.secrets and 'postgres' in st.secrets.connections:
-            db_url = sqlalchemy.engine.URL.create(
-                drivername="postgresql+psycopg2",
-                username=st.secrets.connections.postgres.username,
-                password=st.secrets.connections.postgres.password,
-                host=st.secrets.connections.postgres.host,
-                port=st.secrets.connections.postgres.port,
-                database=st.secrets.connections.postgres.database,
-            )
-            return create_engine(db_url, pool_size=5, max_overflow=10, echo=False)
-            
-        print("Error: No database configuration found in environment or Streamlit secrets")
-        return None
 
     except Exception as e:
         st.error(f"Failed to create database engine: {e}")
