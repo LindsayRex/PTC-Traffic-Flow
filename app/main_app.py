@@ -1,38 +1,23 @@
-# This is the main application file for the PTC Traffic Data Explorer.
-# It uses Streamlit for the web interface and Panel for interactive components.
 
 import streamlit as st
 import logging
+from pathlib import Path
 from log_config import setup_logging
-
-# Initialize environment from secrets
-if not st.secrets.get("environment"):
-    st.error("Environment configuration not found in secrets")
-    st.stop()
+from stremlit_colour_pallet import MAGENTA, BLACK, WHITE, LIGHT_GRAY, DARK_GRAY, STYLES
 
 # Setup logging
-log_config.setup_logging()
+setup_logging()
 logger = logging.getLogger(__name__)
 
-logger.info(f"Starting PTC Traffic Data Explorer application in {st.secrets.environment.get('type', 'development')} mode")
-
-# Configure debug mode
+# Page Configuration
 st.set_page_config(
-    page_title="PTC Traffic Data Explorer",
+    page_title="Traffic Data Analysis",
     page_icon="app/gfx/ptc-logo-white.png",
     layout="wide",
-    initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': None,
-        'Report a bug': None,
-        'About': None
-    } if not st.secrets.environment.get("debug", False) else None
+    initial_sidebar_state="expanded"
 )
-import panel as pn
-import pandas as pd
-from pathlib import Path
 
-# Import feature functions (assuming each feature is implemented in its own file)
+# Import feature functions
 from features.feature_1_profile import render_station_profile
 from features.feature_2_peak import render_peak_analysis
 from features.feature_3_corridor import render_corridor_comparison
@@ -44,41 +29,36 @@ from features.feature_8_directional import render_directional_flow_analysis
 from features.feature_9_hierarchy import render_hierarchy_benchmarking
 from features.feature_10_seasonal import render_seasonal_trend_analyzer
 
-# Import database utilities
-from db_utils import get_db_connection, fetch_data # Example functions
+# Custom CSS
+st.markdown(f"""
+    <style>
+    .stApp {{
+        background-color: {BLACK};
+        color: {WHITE};
+    }}
+    .sidebar .sidebar-content {{
+        background-color: {DARK_GRAY};
+    }}
+    </style>
+""", unsafe_allow_html=True)
 
-# --- Page Configuration ---
-st.set_page_config(
-    page_title="PTC Traffic Data Explorer",
-    page_icon="app/gfx/ptc-logo-white.png", # Or a favicon version
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# --- Panel Setup ---
-pn.extension('tabulator', 'folium', sizing_mode='stretch_width') # Load extensions
-
-# --- Database Connection ---
-# Use st.cache_resource for the connection pool if using SQLAlchemy
-@st.cache_resource
-def init_connection():
-    # Uses Streamlit secrets ideally
-    return get_db_connection()
-
-conn = init_connection()
-
-# --- Sidebar Navigation and Global Controls ---
-logo_path = Path(__file__).parent / "gfx" / "ptc-logo-white.png"
+# Banner with Logo
+logo_path = Path("app/gfx/ptc-logo-white.png")
 if logo_path.exists():
-    st.sidebar.image(str(logo_path), use_column_width=True)
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        st.image(str(logo_path), width=100)
+    with col2:
+        st.markdown(f"<h1 style='{STYLES['title']}'>Traffic Data Analysis</h1>", unsafe_allow_html=True)
 else:
-    st.sidebar.warning("Logo file not found.")
+    st.error("Logo file not found")
 
-st.sidebar.title("Navigation")
+# Sidebar Navigation
+st.sidebar.markdown(f"<h2 style='color: {MAGENTA}'>Navigation</h2>", unsafe_allow_html=True)
 
 # Define pages/features
 PAGES = {
-    "Home": "Home",
+    "Home": None,
     "Station Profile": render_station_profile,
     "Peak Hour Analysis": render_peak_analysis,
     "Corridor Comparison": render_corridor_comparison,
@@ -92,23 +72,36 @@ PAGES = {
 }
 
 # Page selection
-page_selection = st.sidebar.radio("Go to", list(PAGES.keys()))
+selection = st.sidebar.radio("", list(PAGES.keys()))
 
-# --- Main Page Content ---
-st.header(f"PTC Traffic Data Explorer: {page_selection}")
-st.markdown("---") # Visual separator
+# Global Filters in Sidebar
+st.sidebar.markdown(f"<h3 style='color: {MAGENTA}'>Global Filters</h3>", unsafe_allow_html=True)
+date_range = st.sidebar.date_input("Date Range", [])
+region = st.sidebar.selectbox("Region", ["All Regions", "Sydney", "Regional NSW"])
 
-# Render selected page
-if page_selection == "Home":
-    st.subheader("Welcome")
-    st.write("Select a feature from the sidebar to explore the NSW traffic count data.")
-    # Add more info, acknowledgements, or instructions here
+# Main Content Area
+if selection == "Home":
+    st.markdown(f"""
+        <div style='{STYLES["content"]}'>
+            <h2>Welcome to Traffic Data Analysis</h2>
+            <p>This application provides comprehensive traffic data analysis tools for NSW roads.</p>
+            <h3>Key Features:</h3>
+            <ul>
+                <li>Real-time traffic monitoring</li>
+                <li>Historical data analysis</li>
+                <li>Peak hour patterns</li>
+                <li>Vehicle classification insights</li>
+            </ul>
+            <h3>Getting Started:</h3>
+            <p>Select a feature from the sidebar menu to begin exploring traffic data.</p>
+        </div>
+    """, unsafe_allow_html=True)
 else:
-    # Call the function associated with the selected page
-    page_function = PAGES[page_selection]
-    # Pass the database connection/engine to the feature function
-    page_function(conn) # Assuming feature functions accept the connection
+    # Render selected feature
+    feature_function = PAGES[selection]
+    if feature_function:
+        feature_function()
 
-# --- Footer ---
+# Footer
 st.markdown("---")
-st.caption("Developed for ptc. | Data Source: NSW Roads & Maritime Services")
+st.caption("Developed for PTC | Data Source: NSW Roads & Maritime Services")

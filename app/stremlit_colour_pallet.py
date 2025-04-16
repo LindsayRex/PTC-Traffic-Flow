@@ -52,3 +52,19 @@ def get_color_cycler(palette=DEFAULT_PLOT_PALETTE):
     """Returns an iterator that cycles through the chosen palette."""
     from itertools import cycle
     return cycle(palette)
+
+
+# Theme Colors
+MAGENTA = "#E600E6"  # RGB: 230, 0, 230 (Primary Accent)
+BLACK = "#000000"    # RGB: 0, 0, 0 (Primary Background)
+WHITE = "#FFFFFF"    # RGB: 255, 255, 255 (Primary Text)
+LIGHT_GRAY = "#969696"  # RGB: 150, 150, 150 (Secondary Background)
+DARK_GRAY = "#323232"   # RGB: 50, 50, 50 (Sidebar/Widget Background)
+
+# Style Configuration
+STYLES = {
+    "title": f"color: {MAGENTA}; font-size: 42px; font-weight: bold;",
+    "banner": f"background-color: {MAGENTA}; padding: 1rem; margin-bottom: 2rem;",
+    "content": f"background-color: {LIGHT_GRAY}; padding: 2rem; border-radius: 5px;",
+    "sidebar": f"background-color: {DARK_GRAY}; color: {WHITE};"
+}
