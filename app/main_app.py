@@ -3,13 +3,13 @@
 
 import streamlit as st
 import logging
-from .log_config import setup_logging
+from log_config import setup_logging
 import panel as pn
 import pandas as pd
 from pathlib import Path
 
 # --- Import color palette ---
-from .stremlit_colour_pallet import MAGENTA, LIGHT_GRAY, DARK_GRAY, WHITE
+from stremlit_colour_pallet import MAGENTA, LIGHT_GRAY, DARK_GRAY, WHITE
 
 # --- Import feature functions ---
 from features.feature_1_profile import render_station_profile
