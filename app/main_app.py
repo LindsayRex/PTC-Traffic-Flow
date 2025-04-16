@@ -39,24 +39,6 @@ st.markdown(f"""
     .sidebar .sidebar-content {{
         background-color: {DARK_GRAY};
     }}
-    .stSelectbox, .stDateInput {{
-        background-color: {DARK_GRAY};
-        border-radius: 5px;
-        padding: 10px;
-        margin: 5px 0;
-    }}
-    .stButton > button {{
-        background-color: {MAGENTA};
-        color: {WHITE};
-        border: none;
-        border-radius: 5px;
-        padding: 10px 20px;
-        transition: all 0.3s;
-    }}
-    .stButton > button:hover {{
-        opacity: 0.8;
-        transform: translateY(-2px);
-    }}
     </style>
 """, unsafe_allow_html=True)
 
@@ -93,86 +75,25 @@ PAGES = {
 selection = st.sidebar.radio("", list(PAGES.keys()))
 
 # Global Filters in Sidebar
-st.sidebar.markdown(f"""
-    <div style='padding: 10px; background-color: {DARK_GRAY}; border-radius: 5px; margin-bottom: 20px;'>
-        <h3 style='color: {MAGENTA}; margin-bottom: 15px;'>Global Filters</h3>
-    </div>
-""", unsafe_allow_html=True)
-
-# Date Range Filter
-st.sidebar.markdown(f"<p style='color: {WHITE}; margin-bottom: 5px;'>Analysis Period</p>", unsafe_allow_html=True)
-date_range = st.sidebar.date_input("Select Date Range", [], help="Choose the date range for analysis")
-
-# Region Filter
-st.sidebar.markdown(f"<p style='color: {WHITE}; margin-bottom: 5px;'>Geographic Area</p>", unsafe_allow_html=True)
-region = st.sidebar.selectbox("Select Region", 
-    ["All Regions", "Sydney", "Regional NSW", "Western Sydney", "Northern Beaches", "Eastern Suburbs"],
-    help="Filter data by geographic region")
-
-# Additional Filters
-st.sidebar.markdown(f"<p style='color: {WHITE}; margin-bottom: 5px;'>Road Type</p>", unsafe_allow_html=True)
-road_type = st.sidebar.multiselect("Select Road Types",
-    ["All", "Highway", "Arterial", "Local", "Collector"],
-    default=["All"],
-    help="Filter by road classification")
-
-# Apply Filters Button
-st.sidebar.button("Apply Filters", help="Click to apply selected filters", use_container_width=True)
+st.sidebar.markdown(f"<h3 style='color: {MAGENTA}'>Global Filters</h3>", unsafe_allow_html=True)
+date_range = st.sidebar.date_input("Date Range", [])
+region = st.sidebar.selectbox("Region", ["All Regions", "Sydney", "Regional NSW"])
 
 # Main Content Area
 if selection == "Home":
-    # Home page layout with columns
-    st.markdown(f"<div style='{STYLES['content']}'><h2>Welcome to Traffic Data Analysis</h2></div>", unsafe_allow_html=True)
-    
-    # Create three columns for feature highlights
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.markdown(f"""
-            <div style='background-color: {DARK_GRAY}; padding: 20px; border-radius: 10px; height: 200px;'>
-                <h3 style='color: {MAGENTA}'>Traffic Analysis</h3>
-                <p>Comprehensive tools for analyzing traffic patterns and trends across NSW roads.</p>
-                <ul>
-                    <li>Real-time monitoring</li>
-                    <li>Historical data analysis</li>
-                </ul>
-            </div>
-        """, unsafe_allow_html=True)
-        
-    with col2:
-        st.markdown(f"""
-            <div style='background-color: {DARK_GRAY}; padding: 20px; border-radius: 10px; height: 200px;'>
-                <h3 style='color: {MAGENTA}'>Vehicle Classification</h3>
-                <p>Detailed insights into vehicle types and their distribution.</p>
-                <ul>
-                    <li>Heavy vehicle patterns</li>
-                    <li>Vehicle type distribution</li>
-                </ul>
-            </div>
-        """, unsafe_allow_html=True)
-        
-    with col3:
-        st.markdown(f"""
-            <div style='background-color: {DARK_GRAY}; padding: 20px; border-radius: 10px; height: 200px;'>
-                <h3 style='color: {MAGENTA}'>Time Analysis</h3>
-                <p>Compare traffic patterns across different time periods.</p>
-                <ul>
-                    <li>Peak hour analysis</li>
-                    <li>Weekday vs Weekend</li>
-                </ul>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    # Quick start guide
     st.markdown(f"""
         <div style='{STYLES["content"]}'>
-            <h3>Getting Started</h3>
-            <ol>
-                <li>Select a feature from the sidebar menu</li>
-                <li>Choose your analysis parameters</li>
-                <li>Explore interactive visualizations</li>
-                <li>Export or share your findings</li>
-            </ol>
+            <h2>Welcome to Traffic Data Analysis</h2>
+            <p>This application provides comprehensive traffic data analysis tools for NSW roads.</p>
+            <h3>Key Features:</h3>
+            <ul>
+                <li>Real-time traffic monitoring</li>
+                <li>Historical data analysis</li>
+                <li>Peak hour patterns</li>
+                <li>Vehicle classification insights</li>
+            </ul>
+            <h3>Getting Started:</h3>
+            <p>Select a feature from the sidebar menu to begin exploring traffic data.</p>
         </div>
     """, unsafe_allow_html=True)
 else:
