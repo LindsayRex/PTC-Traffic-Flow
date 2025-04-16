@@ -3,7 +3,7 @@
 
 import streamlit as st
 import logging
-from . import log_config
+from app.log_config import setup_logging
 
 # Initialize environment from secrets
 if not st.secrets.get("environment"):
@@ -11,7 +11,7 @@ if not st.secrets.get("environment"):
     st.stop()
 
 # Setup logging
-log_config.setup_logging()
+setup_logging()
 logger = logging.getLogger(__name__)
 
 logger.info(f"Starting PTC Traffic Data Explorer application in {st.secrets.environment.get('type', 'development')} mode")
