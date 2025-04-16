@@ -72,12 +72,7 @@ else:
     st.error("Logo file not found")
 
 # Sidebar Navigation
-st.sidebar.markdown(f"""
-    <div style='padding: 1rem 0; border-bottom: 1px solid {MAGENTA};'>
-        <h2 style='color: {MAGENTA}; font-size: 1.5rem; margin-bottom: 0.5rem;'>Navigation</h2>
-        <p style='color: {WHITE}; font-size: 0.9rem;'>Explore traffic data analysis tools</p>
-    </div>
-""", unsafe_allow_html=True)
+st.sidebar.markdown(f"<h2 style='color: {MAGENTA}'>Navigation</h2>", unsafe_allow_html=True)
 
 # Define pages/features
 PAGES = {
@@ -126,69 +121,21 @@ st.sidebar.button("Apply Filters", help="Click to apply selected filters", use_c
 
 # Main Content Area
 if selection == "Home":
-    # Home page layout with welcome section
-    st.markdown(f"""
-        <div style='text-align: center; padding: 2rem 0;'>
-            <h1 style='color: {MAGENTA}; font-size: 3rem;'>Traffic Data Analysis</h1>
-            <p style='font-size: 1.2rem; color: {WHITE}; margin: 1rem 0;'>
-                Comprehensive traffic analysis tools for NSW roads and highways
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
+    # Home page layout with columns
+    st.markdown(f"<div style='{STYLES['content']}'><h2>Welcome to Traffic Data Analysis</h2></div>", unsafe_allow_html=True)
     
-    # KPI Summary Cards
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    
-    with kpi1:
-        st.markdown(f"""
-            <div style='background-color: {DARK_GRAY}; padding: 1rem; border-radius: 10px; text-align: center;'>
-                <h3 style='color: {MAGENTA}'>10K+</h3>
-                <p>Daily Records</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with kpi2:
-        st.markdown(f"""
-            <div style='background-color: {DARK_GRAY}; padding: 1rem; border-radius: 10px; text-align: center;'>
-                <h3 style='color: {MAGENTA}'>150+</h3>
-                <p>Monitoring Stations</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with kpi3:
-        st.markdown(f"""
-            <div style='background-color: {DARK_GRAY}; padding: 1rem; border-radius: 10px; text-align: center;'>
-                <h3 style='color: {MAGENTA}'>24/7</h3>
-                <p>Real-time Updates</p>
-            </div>
-        """, unsafe_allow_html=True)
-    
-    with kpi4:
-        st.markdown(f"""
-            <div style='background-color: {DARK_GRAY}; padding: 1rem; border-radius: 10px; text-align: center;'>
-                <h3 style='color: {MAGENTA}'>5+</h3>
-                <p>Vehicle Classes</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Feature highlights in three columns
+    # Create three columns for feature highlights
     col1, col2, col3 = st.columns(3)
     
     with col1:
         st.markdown(f"""
-            <div style='background-color: {DARK_GRAY}; padding: 20px; border-radius: 10px; height: 250px; transition: transform 0.3s; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);'>
-                <h3 style='color: {MAGENTA}; font-size: 1.5rem; margin-bottom: 1rem;'>Traffic Analysis</h3>
-                <p style='color: {WHITE}; margin-bottom: 1rem;'>Comprehensive tools for analyzing traffic patterns and trends across NSW roads.</p>
-                <ul style='color: {WHITE}; margin-left: 1rem;'>
-                    <li style='margin-bottom: 0.5rem;'>🔍 Real-time monitoring</li>
-                    <li style='margin-bottom: 0.5rem;'>📊 Historical data analysis</li>
-                    <li style='margin-bottom: 0.5rem;'>📈 Trend visualization</li>
+            <div style='background-color: {DARK_GRAY}; padding: 20px; border-radius: 10px; height: 200px;'>
+                <h3 style='color: {MAGENTA}'>Traffic Analysis</h3>
+                <p>Comprehensive tools for analyzing traffic patterns and trends across NSW roads.</p>
+                <ul>
+                    <li>Real-time monitoring</li>
+                    <li>Historical data analysis</li>
                 </ul>
-                <div style='position: absolute; bottom: 20px;'>
-                    <span style='color: {MAGENTA}; text-decoration: underline; font-size: 0.9rem;'>Learn More →</span>
-                </div>
             </div>
         """, unsafe_allow_html=True)
         
