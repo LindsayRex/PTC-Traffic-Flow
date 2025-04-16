@@ -5,11 +5,11 @@ secondaryBackgroundColor="#323232" # Dark Gray (RGB: 50, 50, 50) - Used for side
 textColor="#FFFFFF" # White (RGB: 255, 255, 255)
 font="sans serif" # Or "serif" or "monospace"
 
+[client]
+# Optional: Caching settings
+# Caching can also be managed in code via @st.cache_data / @st.cache_resource
+
 [server]
 # Optional: Adjust settings if needed
 # headless = true
 # runOnSave = true
-
-[client]
-# Optional: Caching settings
-# Caching can also be managed in code via @st.cache_data / @st.cache_resource

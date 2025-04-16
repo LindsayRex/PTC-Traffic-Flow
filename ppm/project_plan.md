@@ -51,13 +51,15 @@ Indexes: Create indexes on station_key, count_date, classification_seq, year, mo
 
 PostGIS: Using GEOMETRY(geometry_type='POINT', srid=4326) requires the PostGIS extension to be enabled in your database (CREATE EXTENSION IF NOT EXISTS postgis;). This allows for efficient spatial indexing and queries later if needed. 
 We'll need two main tables.
+
 STATUS =  IMPLEMENTED 
 
 
 Nullability: Set nullable=False for columns that must have a value (like count_date). Adjust based on your actual data constraints.
 Indexes: Added index=True to columns frequently used in WHERE clauses or JOIN conditions.
 Relationships: relationship defines how Station and HourlyCount objects are linked. back_populates enables accessing the related objects from both sides (e.g., station.hourly_counts and hourly_count.station).
-STATUS =  IMPLEMENTED 
+
+STATUS =  CHECK 
 
 **2. Data Transformations & Calculated Columns use Python & Panda sqlalchemy** 
 
@@ -72,22 +74,53 @@ Heavy Vehicle Percentage: (Sum of daily_total where classification_seq=3) / (Sum
 Geospatial Data: Ensure wgs84_latitude and wgs84_longitude are used to create the location_geom point data during data loading.
 
 
+**2b. data ransformation refinments.**
+
+STATUS = NOT IMPLEMENTED
+
+1.  **Essential Pre-Calculations:**
+    *   **AADT (Annual Average Daily Traffic):** This is a fundamental metric that is used in many of the features. Pre-calculating AADT during ingestion will significantly improve the performance of the Streamlit app.
+    *   **AAWT (Average Annual Weekday Traffic):** Similar to AADT, this is a commonly used metric that should be pre-calculated.
+    *   **Heavy Vehicle Percentage:** This is another commonly used metric that should be pre-calculated.
+    *   **Average Hourly Profile (Weekday/Weekend):** Pre-calculating the average hourly profile for weekdays and weekends will improve the performance of the "Traffic Station Profile Dashboard" and the "Weekday vs. Weekend Traffic Comparison" features.
+2.  **Conditional Pre-Calculations:**
+    *   **Peak Hour Volumes:** If the calculation of peak hour volumes is relatively simple, you can pre-calculate them during ingestion. However, if the calculation is more complex (e.g., requires dynamic selection of peak hours), it might be better to perform it on the fly in Streamlit.
+    *   **Monthly/Seasonal Trends:** If you anticipate that users will frequently analyze monthly or seasonal trends, you can pre-calculate these trends during ingestion. However, if the analysis is less common, it might be better to perform it on the fly in Streamlit.
+3.  **Data Validation:**
+    *   Implement comprehensive data validation checks in the `ingestion.py` script to ensure that the data is clean and consistent. This will prevent errors and improve the accuracy of the analysis.
+4.  **Data Aggregation:**
+    *   Consider adding data aggregation to the `ingestion.py` script to pre-calculate some of the commonly used aggregates (e.g., daily totals, monthly averages).
+5.  **Streamlit Caching:**
+    *   Leverage Streamlit's caching capabilities to cache the results of the pre-calculated metrics. This will further improve the performance of the Streamlit app.
+
+**Implementation Details:**
+
+*   **Modify `ingestion.py`:** Update the `ingestion.py` script to perform the pre-calculations and store the results in the database.
+*   **Update Database Schema:** Add new columns to the `stations` and `hourly_counts` tables to store the pre-calculated metrics.
+*   **Update Streamlit App:** Update the Streamlit app to retrieve the pre-calculated metrics from the database and display them to the user.
+
+By following this approach, you can strike a good balance between pre-calculation and on-the-fly calculation, ensuring that your Streamlit app is both performant and flexible.
+
+
+
+
+
 
 **Add uniform loging accross app**  STATUS =  IMPLEMENTED 
 
 
 **Add remote shh access with secure keys**   STATUS =  IMPLEMENTED 
 
-
-log_config.setup_logging(level=logging.INFO) # Set desired log level
+EG: log_config.setup_logging(level=logging.INFO) # Set desired log level
 logger = logging.getLogger(__name__)
 
 
+**1. Streamlit App Structure ux**  
 
-1. Streamlit App Structure 
+STATUS - NOT IMPLEMENTED
 
 Objective:  
-Create basic  Streamlit eweb page with a simple. Each feature below could be a page or a section within a page. Use st.sidebar for global filters like date range or LGA selection where applicable.
+Create basic  Streamlit home page with no logon at all. Each feature below could be a page or a section within a page. Use st.sidebar for global filters like date range or LGA selection where applicable.
 
 Colour theme:
 
@@ -108,6 +141,13 @@ app/stremlit_color_pallet.py
 Graphics folder for website:
 app/gfx/ptc-logo-white.png
 
+
+
+
+
+
+
+
 -------------
  Write Test driven design tests first for each def and majopr app logic for testing using pytest. Then use python library Panel for UI components and HoloViews/hvPlot for plotting  with Folium for maps where specified. All components are mandatory, and details regarding labels, titles, dynamic updates, data requirements, and calculations are included for each. App stack uses  PostgreSQL database (stations and hourly_counts tables as previously defined) accessed via Python using SQLAlchemy within a Streamlit web application framework, where Panel objects are rendered.
 ---------------
@@ -118,6 +158,7 @@ STATUS = IMPLEMENTED
 
 Objective: Provide a quick, comprehensive view of a single traffic count station's characteristics and recent/typical trends.
 UI Components (Panel within Streamlit):
+
 Filters:
 pn.widgets.Select widget for selecting station_id or station_key. Options populated dynamically from the stations table. Label: "Select Station".
 pn.widgets.Select widget for selecting Traffic Direction (traffic_direction_seq). Options mapped from numerical values (e.g., 1, 2) to descriptive text (e.g., "Prescribed Direction", "Both Directions"). Label: "Select Direction".

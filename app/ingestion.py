@@ -16,7 +16,7 @@ from data_load_checker import validate_station_data, validate_hourly_count_data
 
 # --- CONFIGURABLE PARAMETERS ---
 MAX_ROWS_TO_PROCESS = 'all'  # Set to a number to limit rows, or 'all' to process the entire file
-COMMIT_BATCH_SIZE = 5000  # Increase commit batch size
+COMMIT_BATCH_SIZE = 10000  # Increase commit batch size
 # -----------------------------
 
 # Set up logging
