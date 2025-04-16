@@ -38,6 +38,18 @@ st.markdown(f"""
     }}
     .sidebar .sidebar-content {{
         background-color: {DARK_GRAY};
+        padding: 1rem 0.5rem;
+    }}
+    .stButton > button {{
+        width: 100%;
+        border: 1px solid {MAGENTA};
+        background-color: transparent;
+        color: {WHITE};
+        transition: all 0.3s ease;
+    }}
+    .stButton > button:hover {{
+        background-color: {MAGENTA};
+        color: {WHITE};
     }}
     </style>
 """, unsafe_allow_html=True)

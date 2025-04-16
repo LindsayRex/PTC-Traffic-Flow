@@ -59,7 +59,7 @@ MAGENTA = "#E600E6"  # RGB: 230, 0, 230 (Primary Accent)
 BLACK = "#000000"    # RGB: 0, 0, 0 (Primary Background)
 WHITE = "#FFFFFF"    # RGB: 255, 255, 255 (Primary Text)
 LIGHT_GRAY = "#969696"  # RGB: 150, 150, 150 (Secondary Background)
-DARK_GRAY = "#323232"   # RGB: 50, 50, 50 (Sidebar/Widget Background)
+DARK_GRAY = "#1E1E1E"   # RGB: 30, 30, 30 (Sidebar/Widget Background)
 
 # Style Configuration
 STYLES = {
