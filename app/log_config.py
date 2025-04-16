@@ -2,13 +2,24 @@ import logging
 import os
 import time
 from pathlib import Path
-import streamlit as st #Import streamlit
+import streamlit as st  # Import streamlit
 
-def setup_logging():
+def setup_logging(script_name="app"):
+    """
+    Set up logging configuration with a dynamic log file name.
+
+    Args:
+        script_name (str, optional): Name of the script using the logger.
+                                     Defaults to "app".
+    """
     # Get logging configuration from secrets
     log_config = st.secrets.get("logging", {})
-    level = getattr(logging, log_config.get("level", "WARNING"))
-    file_path = log_config.get("file_path", "logs/app.log")
+    level = getattr(logging, log_config.get("level", "INFO").upper(), logging.INFO)
+
+    # Create a dynamic log file name based on the script name and timestamp
+    timestamp = time.strftime("%Y%m%d_%H%M%S")
+    log_file_name = f"{script_name}_{timestamp}.log"
+    file_path = os.path.join("logs", log_file_name)
 
     try:
         # Create logs directory if it doesn't exist

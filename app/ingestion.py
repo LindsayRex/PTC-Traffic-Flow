@@ -1,24 +1,25 @@
-import pandas as pd
-import logging
-from log_config import setup_logging
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 import os
-from models import Base, Station, HourlyCount
-from datetime import datetime
-from db_utils import get_db_session  # Import the context manager
-import numpy as np
-from geoalchemy2 import WKTElement
-
+import logging
 import sys
-# Set up logging
-setup_logging()
-logger = logging.getLogger(__name__)
+import pandas as pd
+import numpy as np
+from datetime import datetime
+from log_config import setup_logging
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from models import Base, Station, HourlyCount
+from geoalchemy2 import WKTElement
+from db_utils import get_db_session, get_engine  # Import get_engine
+from tqdm import tqdm  # Import tqdm
 
-# Set console handler to WARNING level only
-for handler in logger.handlers:
-    if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stderr:
-        handler.setLevel(logging.WARNING)
+# --- CONFIGURABLE PARAMETERS ---
+MAX_ROWS_TO_PROCESS = 'all'  # Set to a number to limit rows, or 'all' to process the entire file
+# -----------------------------
+
+# Set up logging
+setup_logging(script_name="ingestion")  # Pass the script name
+logger = logging.getLogger(__name__)
 
 # Function to safely convert to float
 def safe_float(value):
@@ -39,11 +40,26 @@ def ingest_hourly_data():
 
     try:
         # Read CSV file using relative path
-        df = pd.read_csv('/home/runner/workspace/app/data/road_traffic_counts_hourly_sample_0.csv', low_memory=False)
+        csv_file_path = '/home/runner/workspace/app/data/road_traffic_counts_hourly_sample_0.csv'
+        df = pd.read_csv(csv_file_path, low_memory=False)
         logger.info(f"Successfully read CSV file with {len(df)} rows")
+        total_rows_in_csv = len(df)  # Count total rows in CSV
+
+        # Limit the number of rows to process
+        if MAX_ROWS_TO_PROCESS != 'all':
+            try:
+                max_rows = int(MAX_ROWS_TO_PROCESS)
+                df = df.head(max_rows)
+                logger.info(f"Limiting processing to the first {max_rows} rows.")
+            except ValueError:
+                logger.error("Invalid value for MAX_ROWS_TO_PROCESS.  Please set to a number or 'all'. Processing all rows.")
+        else:
+            logger.info("Processing all rows in the CSV file.")
 
         # Process each row
-        records_processed = 0
+        stations_processed = 0
+        hourly_counts_processed = 0
+        skipped_station_keys = 0  # Initialize counter for skipped station keys
 
         with get_db_session() as session:  # Use the context manager
             if session is None:
@@ -52,7 +68,9 @@ def ingest_hourly_data():
                 return False
 
             try:
-                for _, row in df.iterrows():
+                # Load Stations
+                # Wrap the loop with tqdm for progress bar
+                for _, row in tqdm(df.iterrows(), total=len(df), desc="Processing Stations"):
                     # Extract lat/lon and create WKT representation
                     latitude = safe_float(row.get('wgs84_latitude'))
                     longitude = safe_float(row.get('wgs84_longitude'))
@@ -93,29 +111,38 @@ def ingest_hourly_data():
 
                     # Add the station to the session
                     session.add(station)
-                    records_processed += 1
+                    stations_processed += 1
 
-                    # Commit in batches of 1000
-                    if records_processed % 1000 == 0:
+                    # Commit in batches of 500
+                    if stations_processed % 500 == 0:
                         session.commit()
-                        print(f"Processed {records_processed} station records...")
-                        logger.info(f"Processed {records_processed} station records")
+                        print(f"Processed {stations_processed} station records...")
+                        logger.info(f"Processed {stations_processed} station records")
 
                 # Final commit for stations
                 session.commit()
-                print(f"Successfully imported {records_processed} station records")
-                logger.info(f"Successfully imported {records_processed} station records")
+                print(f"Successfully imported {stations_processed} station records")
+                logger.info(f"Successfully imported {stations_processed} station records")
 
-                # Reset records_processed for hourly counts
-                records_processed = 0
+                # Load Hourly Counts
+                # Wrap the loop with tqdm for progress bar
+                for _, row in tqdm(df.iterrows(), total=len(df), desc="Processing Hourly Counts"):
+                    # Extract station_key
+                    station_key = safe_int(row.get('station_key'))
 
-                for _, row in df.iterrows():
+                    # Check if station_key exists in stations table
+                    station_exists = session.query(Station).filter_by(station_key=station_key).first()
+                    if not station_exists:
+                        logger.warning(f"Skipping hourly count record due to missing station_key: {station_key}")
+                        skipped_station_keys += 1  # Increment the counter
+                        continue
+
                     # Convert date string to datetime
                     count_date = pd.to_datetime(row['date']).date()
 
                     # Create HourlyCount object
                     count = HourlyCount(
-                        station_key=safe_int(row.get('station_key')),
+                        station_key=station_key,
                         traffic_direction_seq=safe_int(row.get('traffic_direction_seq')),
                         cardinal_direction_seq=safe_int(row.get('cardinal_direction_seq')),
                         classification_seq=safe_int(row.get('classification_seq')),
@@ -139,18 +166,48 @@ def ingest_hourly_data():
                     count.daily_total = daily_total
 
                     session.add(count)
-                    records_processed += 1
+                    hourly_counts_processed += 1
 
-                    # Commit in batches of 1000
-                    if records_processed % 1000 == 0:
+                    # Commit in batches of 500
+                    if hourly_counts_processed % 500 == 0:
                         session.commit()
-                        print(f"Processed {records_processed} hourly count records...")
-                        logger.info(f"Processed {records_processed} hourly count records")
+                        print(f"Processed {hourly_counts_processed} hourly count records...")
+                        logger.info(f"Processed {hourly_counts_processed} hourly count records")
 
                 # Final commit for hourly counts
                 session.commit()
-                print(f"Successfully imported {records_processed} hourly count records")
-                logger.info(f"Successfully imported {records_processed} hourly count records")
+                print(f"Successfully imported {hourly_counts_processed} hourly count records")
+                logger.info(f"Successfully imported {hourly_counts_processed} hourly count records")
+
+                # Log the number of skipped station keys
+                logger.info(f"Skipped {skipped_station_keys} hourly count records due to missing station_key values.")
+
+                # Verify counts in the database
+                engine = get_engine()
+                if engine:
+                    try:
+                        with engine.connect() as conn:
+                            station_count_db = conn.execute(text("SELECT COUNT(*) FROM stations")).scalar()
+                            hourly_count_db = conn.execute(text("SELECT COUNT(*) FROM hourly_counts")).scalar()
+
+                            logger.info(f"Total rows in CSV: {total_rows_in_csv}")
+                            logger.info(f"Stations processed from CSV: {stations_processed}")
+                            logger.info(f"Hourly counts processed from CSV: {hourly_counts_processed}")
+                            logger.info(f"Stations in DB: {station_count_db}")
+                            logger.info(f"Hourly counts in DB: {hourly_count_db}")
+
+                            print(f"Total rows in CSV: {total_rows_in_csv}")
+                            print(f"Stations processed from CSV: {stations_processed}")
+                            print(f"Hourly counts processed from CSV: {hourly_counts_processed}")
+                            print(f"Stations in DB: {station_count_db}")
+                            print(f"Hourly counts in DB: {hourly_count_db}")
+
+                    except Exception as e:
+                        logger.error(f"Error querying database counts: {e}")
+                        print(f"Error querying database counts: {e}")
+                else:
+                    logger.error("Failed to get database engine for count verification.")
+                    print("Failed to get database engine for count verification.")
 
                 return True
 

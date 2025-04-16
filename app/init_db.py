@@ -1,30 +1,30 @@
 import os
 import logging
 from log_config import setup_logging
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from models import Base, Station
 import pandas as pd
 from geoalchemy2 import WKTElement
-from db_utils import get_engine, get_db_session
-from sqlalchemy import text
+from tqdm import tqdm  # Import tqdm
+
+# --- CONFIGURABLE PARAMETERS ---
+MAX_ROWS_TO_PROCESS = 'all'  # Set to a number to limit rows, or 'all' to process the entire file
+# -----------------------------
 
 # Set up logging
-setup_logging()
+setup_logging(script_name="init_db")  # Pass the script name
 logger = logging.getLogger(__name__)
-
-# Set console handler to WARNING level only
-for handler in logger.handlers:
-    if isinstance(handler, logging.StreamHandler) and handler.stream == sys.stderr:
-        handler.setLevel(logging.WARNING)
 
 def init_db():
     """Initialize the database with station reference data"""
     logger.info("Starting database initialization process")
+    DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/traffic_db')
+    logger.info(f"Using database URL: {DATABASE_URL}")
 
-    engine = get_engine()
-    if not engine:
-        logger.error("Failed to create database engine")
-        return
+    engine = create_engine(DATABASE_URL)
+    logger.info("Database engine created")
 
     try:
         with engine.connect() as connection:
@@ -45,21 +45,33 @@ def init_db():
             Base.metadata.create_all(engine)
             print("New tables created successfully")
 
-            print("\nImporting station reference data...")
-            logger.info("Starting station reference data import")
+            Session = sessionmaker(bind=engine)
+            session = Session(bind=connection)
 
             try:
-                df_stations = pd.read_csv('app/data/road_traffic_counts_station_reference.csv')
-                logger.info(f"Read {len(df_stations)} station records from CSV")
-                print(f"Processing {len(df_stations)} station records...")
-                stations_count = 0
+                print("\nImporting station reference data...")
+                logger.info("Starting station reference data import")
+                try:
+                    df_stations = pd.read_csv('app/data/road_traffic_counts_station_reference.csv')
+                    logger.info(f"Read {len(df_stations)} station records from CSV")
+                    total_rows_in_csv = len(df_stations)
 
-                with get_db_session() as session:
-                    if not session:
-                        logger.error("Failed to create database session")
-                        return
+                    # Limit the number of rows to process
+                    if MAX_ROWS_TO_PROCESS != 'all':
+                        try:
+                            max_rows = int(MAX_ROWS_TO_PROCESS)
+                            df_stations = df_stations.head(max_rows)
+                            logger.info(f"Limiting processing to the first {max_rows} rows.")
+                        except ValueError:
+                            logger.error("Invalid value for MAX_ROWS_TO_PROCESS. Please set to a number or 'all'. Processing all rows.")
+                    else:
+                        logger.info("Processing all rows in the CSV file.")
 
-                    for idx, row in df_stations.iterrows():
+                    print(f"Processing {len(df_stations)} station records...")
+                    stations_count = 0
+
+                    # Wrap the loop with tqdm for progress bar
+                    for idx, row in tqdm(df_stations.iterrows(), total=len(df_stations), desc="Processing Stations"):
                         try:
                             if idx % 500 == 0:
                                 print(f"Processed {idx}/{len(df_stations)} records...")
@@ -124,14 +136,43 @@ def init_db():
                     print(f"Successfully imported {stations_count} stations")
                     logger.info(f"Imported {stations_count} stations")
 
-            except Exception as e:
-                error_msg = f"Error during station data import: {str(e)}"
+                except Exception as e:
+                    error_msg = f"Error during station data import: {str(e)}"
+                    print(f"\nERROR: {error_msg}")
+                    logger.error(error_msg)
+                    session.rollback()
+                    raise
+
+                # Verify counts in the database
+                try:
+                    station_count_db = session.query(Station).count()
+                    logger.info(f"Total rows in CSV: {total_rows_in_csv}")
+                    logger.info(f"Stations processed from CSV: {stations_count}")
+                    logger.info(f"Stations in DB: {station_count_db}")
+
+                    print(f"Total rows in CSV: {total_rows_in_csv}")
+                    print(f"Stations processed from CSV: {stations_count}")
+                    print(f"Stations in DB: {station_count_db}")
+
+                except Exception as e:
+                    logger.error(f"Error querying database counts: {e}")
+                    print(f"Error querying database counts: {e}")
+
+                print("\nDatabase initialization completed successfully!")
+                logger.info("Database initialization completed successfully")
+
+            except SQLAlchemyError as e:
+                error_msg = f"SQLAlchemy error during data import: {str(e)}"
                 print(f"\nERROR: {error_msg}")
                 logger.error(error_msg)
-                raise
-
-            print("\nDatabase initialization completed successfully!")
-            logger.info("Database initialization completed successfully")
+                session.rollback()
+            except Exception as e:
+                error_msg = f"Error during data import: {str(e)}"
+                print(f"\nERROR: {error_msg}")
+                logger.error(error_msg)
+                session.rollback()
+            finally:
+                session.close()
 
     except SQLAlchemyError as e:
         error_msg = f"SQLAlchemy error during database operations: {str(e)}"
@@ -142,9 +183,8 @@ def init_db():
         print(f"\nCRITICAL ERROR: {error_msg}")
         logger.critical(error_msg)
     finally:
-        if engine:
-            engine.dispose()
-            logger.info("Database engine disposed")
+        engine.dispose()
+        logger.info("Database engine disposed")
 
 if __name__ == '__main__':
     init_db()
