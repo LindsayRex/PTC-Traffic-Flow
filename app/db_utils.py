@@ -34,7 +34,7 @@ def get_engine():
             db_url,
             pool_size=5,
             max_overflow=10,
-            echo=debug
+            echo=False
         )
     except Exception as e:
         st.error(f"Failed to create database engine: {e}")

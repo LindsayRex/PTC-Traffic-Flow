@@ -12,6 +12,7 @@ from models import Base, Station, HourlyCount
 from geoalchemy2 import WKTElement
 from db_utils import get_db_session, get_engine  # Import get_engine
 from tqdm import tqdm  # Import tqdm
+from data_load_checker import validate_station_data, validate_hourly_count_data
 
 # --- CONFIGURABLE PARAMETERS ---
 MAX_ROWS_TO_PROCESS = 'all'  # Set to a number to limit rows, or 'all' to process the entire file
@@ -21,6 +22,15 @@ COMMIT_BATCH_SIZE = 5000  # Increase commit batch size
 # Set up logging
 setup_logging(script_name="ingestion")  # Pass the script name
 logger = logging.getLogger(__name__)
+
+# Set up skipped data logging
+skipped_data_logger = logging.getLogger('skipped_data')
+skipped_data_logger.setLevel(logging.INFO)
+os.makedirs('logs', exist_ok=True)  # Ensure the 'logs' directory exists
+skipped_data_handler = logging.FileHandler('logs/skipped_data.log')
+skipped_data_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+skipped_data_handler.setFormatter(skipped_data_formatter)
+skipped_data_logger.addHandler(skipped_data_handler)
 
 # Function to safely convert to float
 def safe_float(value):
@@ -54,6 +64,11 @@ def load_station_reference_data(session):
         else:
             logger.info("Processing all rows in the CSV file.")
 
+        # Validate station data
+        if not validate_station_data(df_stations):
+            logger.error("Station data validation failed. Aborting data load.")
+            return False
+
         # Data Type Conversions
         for col in ['wgs84_latitude', 'wgs84_longitude', 'quality_rating', 'station_key']:
             if col in df_stations.columns:
@@ -64,6 +79,7 @@ def load_station_reference_data(session):
 
         # Data Type Conversions and Geometry Creation
         stations_to_insert = []
+        skipped_stations = 0
         for idx, row in tqdm(df_stations.iterrows(), total=len(df_stations), desc="Processing Stations"):
             try:
                 latitude = safe_float(row.get('wgs84_latitude'))
@@ -71,6 +87,8 @@ def load_station_reference_data(session):
 
                 if pd.isna(latitude) or pd.isna(longitude):
                     logger.warning(f"Skipping row due to invalid latitude or longitude: {row}")
+                    skipped_data_logger.info(f"Skipped station record {idx}: Invalid latitude or longitude - {row.to_dict()}")
+                    skipped_stations += 1
                     continue
 
                 # Geometry Creation (Optimized)
@@ -95,14 +113,16 @@ def load_station_reference_data(session):
                     vehicle_classifier=bool(row.get('vehicle_classifier', False)),
                     heavy_vehicle_checking_station=bool(row.get('heavy_vehicle_checking_station', False)),
                     quality_rating=int(row.get('quality_rating', 0)),
-                    wgs84_latitude=str(latitude),  # Store as string
-                    wgs84_longitude=str(longitude), # Store as string
+                    wgs84_latitude=str(latitude),
+                    wgs84_longitude=str(longitude),
                     location_geom=location_geom
                 )
                 stations_to_insert.append(station)
 
             except Exception as row_error:
                 logger.error(f"Error processing station record {idx}: {row_error}")
+                skipped_data_logger.info(f"Skipped station record {idx}: Processing error - {row_error} - {row.to_dict()}")
+                skipped_stations += 1
                 continue
 
         # Bulk insert using SQLAlchemy
@@ -110,6 +130,8 @@ def load_station_reference_data(session):
         session.add_all(stations_to_insert)
         session.commit()
         logger.info(f"Successfully imported {len(stations_to_insert)} stations")
+        if skipped_stations > 0:
+            logger.warning(f"Skipped {skipped_stations} station records due to data issues. See logs/skipped_data.log for details.")
 
         return True
 
@@ -149,7 +171,8 @@ def ingest_hourly_data():
                 logger.info("Processing all rows in the CSV file.")
 
             hourly_counts_processed = 0
-            skipped_station_keys = 0  # Initialize counter for skipped station keys
+            skipped_station_keys = 0
+            skipped_hourly_counts = 0
 
             try:
                 # Load valid station keys into a set
@@ -166,11 +189,19 @@ def ingest_hourly_data():
                     # Check if station_key exists in stations table (using set)
                     if station_key not in valid_station_keys:
                         logger.warning(f"Skipping hourly count record due to missing station_key: {station_key}")
+                        skipped_data_logger.info(f"Skipped hourly count record: Missing station_key - {station_key} - {row.to_dict()}")
                         skipped_station_keys += 1  # Increment the counter
+                        skipped_hourly_counts += 1
                         continue
 
                     # Convert date string to datetime
-                    count_date = pd.to_datetime(row['date']).date()
+                    try:
+                        count_date = pd.to_datetime(row['date']).date()
+                    except ValueError as e:
+                        logger.error(f"Error converting date: {e}")
+                        skipped_data_logger.info(f"Skipped hourly count record: Invalid date format - {row.to_dict()}")
+                        skipped_hourly_counts += 1
+                        continue
 
                     # Create HourlyCount object
                     count_data = {
@@ -189,12 +220,15 @@ def ingest_hourly_data():
                     # Add hourly values
                     for hour in range(24):
                         hour_col = f'hour_{str(hour).zfill(2)}'
-                        hour_value = safe_int(row.get(hour_col, 0))
-                        count_data[hour_col] = hour_value
+                        # Use .get() with a default value of 0 and handle NaN values
+                        hour_value = row.get(hour_col, 0)
+                        if pd.isna(hour_value):
+                            hour_value = 0
+                        count_data[hour_col] = int(hour_value)
 
                     # Calculate daily total
                     hour_cols = [f'hour_{str(h).zfill(2)}' for h in range(24)]
-                    daily_total = sum(safe_int(row.get(col, 0)) for col in hour_cols)
+                    daily_total = sum(int(row.get(col, 0)) if not pd.isna(row.get(col, 0)) else 0 for col in hour_cols)
                     count_data['daily_total'] = daily_total
 
                     hourly_counts_to_insert.append(count_data)
@@ -216,6 +250,9 @@ def ingest_hourly_data():
 
                 # Log the number of skipped station keys
                 logger.info(f"Skipped {skipped_station_keys} hourly count records due to missing station_key values.")
+
+                if skipped_hourly_counts > 0:
+                    logger.warning(f"Skipped {skipped_hourly_counts} hourly count records due to data issues. See logs/skipped_data.log for details.")
 
                 # Verify counts in the database
                 engine = get_engine()
