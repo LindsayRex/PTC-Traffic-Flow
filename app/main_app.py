@@ -12,16 +12,16 @@ from pathlib import Path
 from stremlit_colour_pallet import MAGENTA, LIGHT_GRAY, DARK_GRAY, WHITE
 
 # --- Import feature functions ---
-from features.feature_1_profile import render_station_profile
-from features.feature_2_peak import render_peak_analysis
-from features.feature_3_corridor import render_corridor_comparison
-from features.feature_4_heavy_vehicle import render_heavy_vehicle_explorer
-from features.feature_5_weekday_weekend import render_weekday_weekend_comparison
-from features.feature_6_quality import render_data_quality_overview
-from features.feature_7_snapshot import render_lga_suburb_snapshot
-from features.feature_8_directional import render_directional_flow_analysis
-from features.feature_9_hierarchy import render_hierarchy_benchmarking
-from features.feature_10_seasonal import render_seasonal_trend_analyzer
+from app.features.feature_1_profile import render_station_profile
+from app.features.feature_2_peak import render_peak_analysis
+from app.features.feature_3_corridor import render_corridor_comparison
+from app.features.feature_4_heavy_vehicle import render_heavy_vehicle_explorer
+from app.features.feature_5_weekday_weekend import render_weekday_weekend_comparison
+from app.features.feature_6_quality import render_data_quality_overview
+from app.features.feature_7_snapshot import render_lga_suburb_snapshot
+from app.features.feature_8_directional import render_directional_flow_analysis
+from app.features.feature_9_hierarchy import render_hierarchy_benchmarking
+from app.features.feature_10_seasonal import render_seasonal_trend_analyzer
 
 # --- Import database utilities ---
 from db_utils import get_db_connection, fetch_data
