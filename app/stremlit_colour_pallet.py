@@ -4,12 +4,40 @@ Defines color constants based on the app's theme and provides
 standard categorical color palettes for consistent use in visualizations.
 """
 
+import streamlit as st
+from streamlit.config import get_option
+
 # --- Theme Colors ---
 MAGENTA = "#E600E6" # RGB: 230, 0, 230 (Primary Accent)
 BLACK = "#000000"   # RGB: 0, 0, 0 (Primary Background)
 WHITE = "#FFFFFF"   # RGB: 255, 255, 255 (Primary Text)
 LIGHT_GRAY = "#969696" # RGB: 150, 150, 150 (Secondary Background/Elements)
 DARK_GRAY = "#323232"  # RGB: 50, 50, 50 (Sidebar/Widget Background/Borders)
+
+def rgba(hex_color, opacity):
+    """Converts a hex color to rgba with the given opacity."""
+    hex_color = hex_color.lstrip('#')
+    rgb = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+    return f"rgba({rgb[0]}, {rgb[1]}, {rgb[2]}, {opacity})"
+
+# --- Opacity Variations ---
+MAGENTA_80 = rgba(MAGENTA, 0.8)
+MAGENTA_60 = rgba(MAGENTA, 0.6)
+MAGENTA_40 = rgba(MAGENTA, 0.4)
+MAGENTA_20 = rgba(MAGENTA, 0.2)
+MAGENTA_05 = rgba(MAGENTA, 0.05)
+
+BLACK_80 = rgba(BLACK, 0.8)
+BLACK_60 = rgba(BLACK, 0.6)
+BLACK_40 = rgba(BLACK, 0.4)
+BLACK_20 = rgba(BLACK, 0.2)
+BLACK_05 = rgba(BLACK, 0.05)
+
+WHITE_80 = rgba(WHITE, 0.8)
+WHITE_60 = rgba(WHITE, 0.6)
+WHITE_40 = rgba(WHITE, 0.4)
+WHITE_20 = rgba(WHITE, 0.2)
+WHITE_05 = rgba(WHITE, 0.05)
 
 # --- Categorical Color Palettes ---
 
@@ -28,6 +56,11 @@ CATEGORY10_PALETTE = [
     "#17becf"   # Cyan
 ]
 
+CATEGORY10_PALETTE_80 = [rgba(color, 0.8) for color in CATEGORY10_PALETTE]
+CATEGORY10_PALETTE_60 = [rgba(color, 0.6) for color in CATEGORY10_PALETTE]
+CATEGORY10_PALETTE_40 = [rgba(color, 0.4) for color in CATEGORY10_PALETTE]
+CATEGORY10_PALETTE_20 = [rgba(color, 0.2) for color in CATEGORY10_PALETTE]
+
 # Bokeh/D3 Category20 palette: Good for up to 20 distinct categories, pairs related colors.
 # Source: https://docs.bokeh.org/en/latest/docs/reference/palettes.html#bokeh-palettes-category20
 CATEGORY20_PALETTE = [
@@ -42,6 +75,11 @@ CATEGORY20_PALETTE = [
     "#bcbd22", "#dbdb8d", # Olive pair
     "#17becf", "#9edae5"  # Cyan pair
 ]
+
+CATEGORY20_PALETTE_80 = [rgba(color, 0.8) for color in CATEGORY20_PALETTE]
+CATEGORY20_PALETTE_60 = [rgba(color, 0.6) for color in CATEGORY20_PALETTE]
+CATEGORY20_PALETTE_40 = [rgba(color, 0.4) for color in CATEGORY20_PALETTE]
+CATEGORY20_PALETTE_20 = [rgba(color, 0.2) for color in CATEGORY20_PALETTE]
 
 # Select default palette to use in the app
 # For most cases with limited categories (like road hierarchy, direction pairs), Category10 is often sufficient.

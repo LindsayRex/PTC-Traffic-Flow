@@ -6,7 +6,7 @@ textColor="#FFFFFF" # White (RGB: 255, 255, 255)
 font="sans serif" # Or "serif" or "monospace"
 
 [server]
-# Optional: Adjust settings if needed
+env = {PYFILE = "main_app.py"}
 # headless = true
 # runOnSave = true
 
