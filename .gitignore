@@ -165,3 +165,6 @@ logs/*
 ppm/
 
 
+# vs code settings
+.vscode/settings.json  
+ptc_traffic_flow.code-workspace

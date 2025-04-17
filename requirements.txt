@@ -8,3 +8,5 @@ panel
 holoviews
 hvplot
 pytest
+numpy
+folium

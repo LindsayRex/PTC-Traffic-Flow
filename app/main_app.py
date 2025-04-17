@@ -55,7 +55,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # Banner with Logo
-logo_path = Path("app/gfx/ptc-logo-white.png")
+logo_path = Path("app/gfx/ptc-logo-white.svg")
 if logo_path.exists():
     col1, col2 = st.columns([1, 5])
     with col1:
