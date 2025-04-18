@@ -164,7 +164,7 @@ logs/*
 ppm/
 
 # ignore files in folder
-.secrets.toml
+.streamlit/secrets.toml
 
 # vs code settings
 .vscode/settings.json  
