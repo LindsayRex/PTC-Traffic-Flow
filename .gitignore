@@ -161,9 +161,10 @@ attached_assets/
 # ignore folder contents
 logs/*
 !logs/
-
 ppm/
 
+# ignore files in folder
+.secrets.toml
 
 # vs code settings
 .vscode/settings.json  

@@ -1,3 +1,10 @@
+# config.toml This is a configuration file for Streamlit, a Python library for building web applications.
+# The file is in TOML format, which is a minimal configuration file format.
+# The sections are defined by square brackets, and key-value pairs are separated by an equals sign.
+# The file contains settings for the Streamlit application, including theme and server settings.
+# The comments (lines starting with #) explain the purpose of each section and setting.
+
+# The file is used to customize the appearance and behavior of the Streamlit app.
 [theme]
 primaryColor="#E600E6" # Magenta (RGB: 230, 0, 230)
 backgroundColor="#000000" # Black (RGB: 0, 0, 0)
@@ -5,6 +12,8 @@ secondaryBackgroundColor="#1E1E1E" # Dark Gray (RGB: 30, 30, 30) - Used for side
 textColor="#FFFFFF" # White (RGB: 255, 255, 255)
 font="sans serif" # Or "serif" or "monospace"
 
+# client settings
+# Optional: Adjust settings if needed
 [client]
 # Optional: Caching settings
 # Caching can also be managed in code via @st.cache_data / @st.cache_resource
@@ -13,3 +22,12 @@ font="sans serif" # Or "serif" or "monospace"
 # Optional: Adjust settings if needed
 # headless = true
 # runOnSave = true
+
+[environment]
+type = "development"
+debug = "true"
+logging_level = "INFO"
+
+[features]
+enable_experimental = true
+show_developer_tools = true
