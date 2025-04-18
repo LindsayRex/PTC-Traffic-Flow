@@ -157,6 +157,10 @@ cython_debug/
 #streamlit config particulars
 secrets.toml
 attached_assets/
+.streamlit/secrets.toml
+
+
+
 
 # ignore folder contents
 logs/*
