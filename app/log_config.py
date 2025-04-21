@@ -14,7 +14,7 @@ def setup_logging(script_name="app"):
     """
     # Get logging configuration from secrets
     log_config = st.secrets.get("logging", {})
-    level = getattr(logging, log_config.get("level", "WARNING").upper(), logging.INFO)
+    level = getattr(logging, log_config.get("level", "INFO").upper(), logging.INFO)
 
     # Create a dynamic log file name based on the script name and timestamp
     timestamp = time.strftime("%Y%m%d_%H%M%S")
