@@ -13,19 +13,16 @@ import datetime as dt
 import logging
 from typing import List, Dict, Optional, Tuple, Any
 
-# Import logging configuration - using relative import
-from ..log_config import setup_logging
-
 # Import utility functions - using relative import
 from ..db_utils import (
     get_station_details,
     get_distinct_values,
     get_hourly_data_for_stations,
-    get_all_station_metadata
+    get_all_station_metadata,
+    get_latest_data_date  # <-- Add this import
 )
 
-# Set up logging
-setup_logging(script_name="feature_1_profile")
+# Get logger for this module
 logger = logging.getLogger(__name__)
 
 def render_station_profile():
@@ -106,44 +103,68 @@ def render_station_profile():
             selected_direction_desc = directions[selected_direction]
             logger.info(f"User selected direction: {selected_direction} ({selected_direction_desc})")
             
-            # Date range calculation for data fetching
-            # Use a fixed end date based on available data
-            fixed_end_date = datetime.date(2014, 12, 27)
-            start_date_90_days = fixed_end_date - datetime.timedelta(days=90)
-            start_date_full_year = fixed_end_date - datetime.timedelta(days=365)
-            
-            # The earliest start date we need
-            start_date = min(start_date_90_days, start_date_full_year)
-            logger.debug(f"Data query date range: {start_date} to {fixed_end_date}")
-            
-            # Fetch hourly data
-            with st.spinner("Loading traffic data..."):
-                logger.debug(f"Fetching hourly data for station key: {selected_station_key}")
-                try:
-                    hourly_data = get_hourly_data_for_stations(
-                        [selected_station_key],
-                        start_date,
-                        fixed_end_date,
-                        directions=[selected_direction],
-                        classifications=[1],
-                        required_cols=None
-                    )
-                    if hourly_data is None:
-                        logger.error(f"get_hourly_data_for_stations returned None for key {selected_station_key}")
-                        st.error("Could not load traffic data for the selected station.")
+            # --- DYNAMIC DATE RANGE CALCULATION ---
+            latest_date = None
+            start_date_90_days = None
+            start_date_full_year = None
+            start_date = None
+            end_date = None  # Use 'end_date' instead of 'fixed_end_date'
+
+            try:
+                logger.debug(f"Fetching latest data date for station {selected_station_key}, direction {selected_direction}")
+                latest_date = get_latest_data_date(selected_station_key, selected_direction)
+
+                if latest_date:
+                    end_date = latest_date  # Use the actual latest date as the end date
+                    start_date_90_days = end_date - datetime.timedelta(days=90)
+                    start_date_full_year = end_date - datetime.timedelta(days=365)
+                    # The earliest start date we need for fetching
+                    start_date = min(start_date_90_days, start_date_full_year)
+                    logger.info(f"Using dynamic date range based on latest data: {start_date} to {end_date}")
+                else:
+                    logger.warning(f"No latest data date found for station {selected_station_key}, direction {selected_direction}. Cannot calculate dynamic range.")
+                    st.warning("No data found for this station and direction to determine date range.")
+
+            except Exception as e:
+                logger.error(f"Error fetching latest data date: {e}", exc_info=True)
+                st.error("Error determining data date range.")
+            # --- END DYNAMIC DATE RANGE CALCULATION ---
+
+            # Fetch hourly data only if a valid date range was determined
+            hourly_data = pd.DataFrame()  # Initialize empty
+            if start_date and end_date and station_details:  # Check if dates are valid and details exist
+                with st.spinner("Loading traffic data..."):
+                    logger.debug(f"Fetching hourly data for station key: {selected_station_key} from {start_date} to {end_date}")
+                    try:
+                        hourly_data = get_hourly_data_for_stations(
+                            [selected_station_key],
+                            start_date,  # Use dynamic start date
+                            end_date,    # Use dynamic end date
+                            directions=[selected_direction],
+                            classifications=[1],
+                            required_cols=None
+                        )
+                        if hourly_data is None:
+                            logger.error(f"get_hourly_data_for_stations returned None for key {selected_station_key}")
+                            st.error("Could not load traffic data for the selected station.")
+                            hourly_data = pd.DataFrame()
+                        elif not hourly_data.empty:
+                            logger.info(f"Retrieved {len(hourly_data)} hourly records for station {selected_station_id}")
+                        else:
+                            logger.warning(f"No hourly data found for station {selected_station_id} and selected criteria.")
+                    except Exception as e:
+                        logger.error(f"Failed to fetch hourly data: {e}", exc_info=True)
+                        st.error("Error loading traffic data. Check logs for details.")
                         hourly_data = pd.DataFrame()
-                    elif not hourly_data.empty:
-                        logger.info(f"Retrieved {len(hourly_data)} hourly records for station {selected_station_id}")
-                    else:
-                        logger.warning(f"No hourly data found for station {selected_station_id} and selected criteria.")
-                except Exception as e:
-                    logger.error(f"Failed to fetch hourly data: {e}", exc_info=True)
-                    st.error("Error loading traffic data. Check logs for details.")
-                    hourly_data = pd.DataFrame()
+            elif not station_details:
+                logger.warning("Station details not available, skipping hourly data fetch.")
+            else:
+                logger.warning("Date range not determined, skipping hourly data fetch.")
     
     # 4. Create visualizations in the second column
     with col2:
-        if 'station_details' in locals() and station_details:
+        # Check if station_dict exists AND if the date range was successfully calculated
+        if 'station_details' in locals() and station_details and start_date_full_year and start_date_90_days and end_date:
             # Convert ORM object to dict for easier access if needed
             if not isinstance(station_details, dict):
                 try:
@@ -176,8 +197,15 @@ def render_station_profile():
                     "Quality Rating": station_dict.get("quality_rating", "N/A")
                 }
                 
+                # --- FIX: Convert values to string before creating DataFrame ---
+                metadata_items = [(k, str(v)) for k, v in metadata_cols.items()]
+                metadata_df = pd.DataFrame(metadata_items, columns=["Attribute", "Value"])
+                # --- END FIX ---
+                
                 # Display as a table
-                st.table(pd.DataFrame(list(metadata_cols.items()), columns=["Attribute", "Value"]))
+                # --- FIX: Remove unsupported label arguments ---
+                st.table(metadata_df)
+                # --- END FIX ---
                 
                 # Display station location map
                 st.subheader(f"Location: {selected_station_id}")
@@ -203,7 +231,9 @@ def render_station_profile():
                     ).add_to(m)
                     
                     # Display the map in Streamlit
+                    # --- FIX: Remove unsupported label arguments AGAIN ---
                     st_folium(m, width=700, height=500)
+                    # --- END FIX ---
                 else:
                     logger.warning(f"No location data available for station {selected_station_id}")
                     st.warning("No location data available for this station")
@@ -216,8 +246,11 @@ def render_station_profile():
                 if 'hourly_data' in locals() and not hourly_data.empty:
                     # Process data for hourly profile chart
                     logger.debug("Processing yearly hourly data for profiles")
-                    # Filter for the last full year
-                    year_data = hourly_data[hourly_data['count_date'] >= start_date_full_year].copy()
+                    # Filter for the last full year using DYNAMIC dates
+                    year_data = hourly_data[
+                        (hourly_data['count_date'] >= start_date_full_year) &
+                        (hourly_data['count_date'] <= end_date)  # Ensure upper bound is also dynamic
+                    ].copy()
                     
                     if not year_data.empty:
                         # Exclude public holidays
@@ -266,7 +299,9 @@ def render_station_profile():
                                 
                                 # Convert to html and display in Streamlit
                                 hvplot_html = hv.render(fig, backend='bokeh')
-                                st.bokeh_chart(hvplot_html, use_container_width=True)
+                                # --- FIX: Add hidden label ---
+                                st.bokeh_chart(hvplot_html, use_container_width=True, label="Hourly Profile Chart", label_visibility="collapsed")
+                                # --- END FIX ---
                             except Exception as e:
                                 logger.error(f"Failed to create hourly profile chart: {e}")
                                 st.error("Error creating hourly profile chart. Check logs for details.")
@@ -274,11 +309,11 @@ def render_station_profile():
                             logger.warning("Insufficient data to create hourly profiles")
                             st.warning("Not enough data to create hourly profiles")
                     else:
-                        logger.warning(f"No yearly data available for station {selected_station_id}")
-                        st.warning("No yearly data available for this station")
+                        logger.warning(f"No data available within the calculated last year ({start_date_full_year} to {end_date}) for station {selected_station_id}")
+                        st.warning(f"No data available within the calculated last year ({start_date_full_year.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})")
                 else:
-                    logger.warning(f"No data available for station {selected_station_id}")
-                    st.warning("No data available for this station")
+                    logger.warning(f"No hourly data fetched for station {selected_station_id}")
+                    st.warning("No hourly data available for this station and direction.")
             
             # Tab 3: Recent Daily Volume Trend Chart
             with tab3:
@@ -286,9 +321,12 @@ def render_station_profile():
                 st.subheader(f"Recent Daily Traffic Volume ({selected_direction_desc}) - Last 90 Days")
                 
                 if 'hourly_data' in locals() and not hourly_data.empty:
-                    # Filter for the last 90 days
+                    # Filter for the last 90 days using DYNAMIC dates
                     logger.debug("Processing recent daily data for trends")
-                    recent_data = hourly_data[hourly_data['count_date'] >= start_date_90_days].copy()
+                    recent_data = hourly_data[
+                        (hourly_data['count_date'] >= start_date_90_days) &
+                        (hourly_data['count_date'] <= end_date)  # Ensure upper bound is also dynamic
+                    ].copy()
                     
                     if not recent_data.empty:
                         try:
@@ -316,16 +354,21 @@ def render_station_profile():
                             
                             # Convert to html and display in Streamlit
                             hvplot_html = hv.render(fig, backend='bokeh')
-                            st.bokeh_chart(hvplot_html, use_container_width=True)
+                            # --- FIX: Add hidden label ---
+                            st.bokeh_chart(hvplot_html, use_container_width=True, label="Daily Trend Chart", label_visibility="collapsed")
+                            # --- END FIX ---
                         except Exception as e:
                             logger.error(f"Failed to create daily trends chart: {e}")
                             st.error("Error creating daily trends chart. Check logs for details.")
                     else:
-                        logger.warning(f"No recent data available for station {selected_station_id}")
-                        st.warning("No recent data available for this station")
+                        logger.warning(f"No data available within the calculated last 90 days ({start_date_90_days} to {end_date}) for station {selected_station_id}")
+                        st.warning(f"No data available within the calculated last 90 days ({start_date_90_days.strftime('%Y-%m-%d')} to {end_date.strftime('%Y-%m-%d')})")
                 else:
-                    logger.warning(f"No data available for station {selected_station_id}")
-                    st.warning("No data available for this station")
+                    logger.warning(f"No hourly data fetched for station {selected_station_id}")
+                    st.warning("No hourly data available for this station and direction.")
+        elif 'station_details' in locals() and station_details:
+            # This case handles when station details are loaded but date range failed
+            st.warning("Could not determine the date range for analysis based on available data for this station and direction.")
         else:
             logger.info("No station selected or station details not available")
             st.warning("Please select a station to display data")

@@ -13,9 +13,9 @@ st.set_page_config(
 )
 # --- End of Page Configuration ---
 
-# Setup logging
+# Setup logging (call once at the start)
 setup_logging()
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__) # Get logger for this module
 
 # --- Now initialize and check Database Connection ---
 # Import db_utils here if it relies heavily on st commands like st.secrets

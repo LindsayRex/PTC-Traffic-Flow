@@ -4,7 +4,6 @@ import sys
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from log_config import setup_logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
@@ -20,17 +19,13 @@ COMMIT_BATCH_SIZE = 10000  # Increase commit batch size
 # -----------------------------
 
 # Set up logging
-setup_logging(script_name="ingestion")  # Pass the script name
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__) # Get logger for this module
 
-# Set up skipped data logging
-skipped_data_logger = logging.getLogger('skipped_data')
-skipped_data_logger.setLevel(logging.INFO)
-os.makedirs('logs', exist_ok=True)  # Ensure the 'logs' directory exists
-skipped_data_handler = logging.FileHandler('logs/skipped_data.log')
-skipped_data_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-skipped_data_handler.setFormatter(skipped_data_formatter)
-skipped_data_logger.addHandler(skipped_data_handler)
+# Get the logger for skipped data (no setup needed, handled by root)
+skipped_data_logger = logging.getLogger("skipped_data")
+# Ensure level is set if you need INFO for skipped data specifically
+# and the root logger level might be higher (e.g., WARNING)
+# skipped_data_logger.setLevel(logging.INFO) # Optional: Uncomment if needed
 
 # Function to safely convert to float
 def safe_float(value):
