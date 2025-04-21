@@ -118,15 +118,28 @@ def get_all_station_metadata() -> pd.DataFrame:
             return pd.DataFrame()
 
 @st.cache_data(ttl=3600)
-def get_station_details(station_key: int) -> Optional[Station]:
-    """Fetches a single station's full details by station_key."""
+def get_station_details(station_key: int) -> Optional[Dict[str, Any]]:
+    """Fetches a single station's full details by station_key as a dictionary."""
+    logger.debug(f"Fetching details for station_key: {station_key}")
     with get_db_session() as session:
-        if not session: return None
+        if not session:
+            logger.error("get_station_details: No DB session available.")
+            return None
         try:
-            station = session.get(Station, station_key)
-            return station
+            stmt = select(Station).where(Station.station_key == station_key)
+            station = session.execute(stmt).scalar_one_or_none()
+
+            if station:
+                logger.debug(f"Found station: {station.station_id}")
+                # Convert ORM object to dict *within the session*
+                station_dict = {c.name: getattr(station, c.name) for c in station.__table__.columns}
+                logger.debug(f"Converted station {station.station_id} to dict.")
+                return station_dict
+            else:
+                logger.warning(f"No station found for station_key: {station_key}")
+                return None
         except Exception as e:
-            st.error(f"Error fetching station details for key {station_key}: {e}")
+            logger.error(f"Error fetching or converting station details for key {station_key}: {e}", exc_info=True)
             return None
 
 @st.cache_data(ttl=3600)
