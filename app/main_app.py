@@ -1,33 +1,45 @@
-
 import streamlit as st
 import logging
 from pathlib import Path
-from log_config import setup_logging
-from stremlit_colour_pallet import MAGENTA, BLACK, WHITE, LIGHT_GRAY, DARK_GRAY, STYLES
+from app.log_config import setup_logging
+from app.stremlit_colour_pallet import MAGENTA, BLACK, WHITE, LIGHT_GRAY, DARK_GRAY, STYLES
 
-# Setup logging
-setup_logging()
-logger = logging.getLogger(__name__)
-
-# Page Configuration
+# --- Page Configuration (MUST BE FIRST STREAMLIT COMMAND) ---
 st.set_page_config(
     page_title="Traffic Data Analysis",
-    page_icon="app/gfx/ptc-logo-white.png",
+    page_icon="app/gfx/ptc-logo-white.png",  # Ensure this path is correct relative to execution dir or use absolute
     layout="wide",
     initial_sidebar_state="expanded"
 )
+# --- End of Page Configuration ---
 
-# Import feature functions
-from features.feature_1_profile import render_station_profile
-from features.feature_2_peak import render_peak_analysis
-from features.feature_3_corridor import render_corridor_comparison
-from features.feature_4_heavy_vehicle import render_heavy_vehicle_explorer
-from features.feature_5_weekday_weekend import render_weekday_weekend_comparison
-from features.feature_6_quality import render_data_quality_overview
-from features.feature_7_snapshot import render_lga_suburb_snapshot
-from features.feature_8_directional import render_directional_flow_analysis
-from features.feature_9_hierarchy import render_hierarchy_benchmarking
-from features.feature_10_seasonal import render_seasonal_trend_analyzer
+# Setup logging (call once at the start)
+setup_logging()
+logger = logging.getLogger(__name__) # Get logger for this module
+
+# --- Now initialize and check Database Connection ---
+# Import db_utils here if it relies heavily on st commands like st.secrets
+from app.db_utils import SessionFactory, engine
+
+if engine is None or SessionFactory is None:
+    logger.error("Database Engine or Session Factory failed to initialize. Stopping app.")
+    # This st.error call is now AFTER set_page_config, which is allowed.
+    st.error("Fatal Error: Could not establish database connection. Please check configuration and logs.")
+    st.stop()  # Stop script execution if DB connection failed
+else:
+    logger.info("Database Engine and Session Factory initialized successfully.")
+
+# Import feature functions (can be done after DB check)
+from app.features.feature_1_profile import render_station_profile
+from app.features.feature_2_peak import render_peak_analysis
+from app.features.feature_3_corridor import render_corridor_comparison
+from app.features.feature_4_heavy_vehicle import render_heavy_vehicle_explorer
+from app.features.feature_5_weekday_weekend import render_weekday_weekend_comparison
+from app.features.feature_6_quality import render_data_quality_overview
+from app.features.feature_7_snapshot import render_lga_suburb_snapshot
+from app.features.feature_8_directional import render_directional_flow_analysis
+from app.features.feature_9_hierarchy import render_hierarchy_benchmarking
+from app.features.feature_10_seasonal import render_seasonal_trend_analyzer
 
 # Custom CSS
 st.markdown(f"""
@@ -112,7 +124,11 @@ else:
     # Render selected feature
     feature_function = PAGES[selection]
     if feature_function:
-        feature_function()
+        try:
+            feature_function()
+        except Exception as e:
+            logger.error(f"Error rendering feature '{selection}': {e}", exc_info=True)
+            st.error(f"An error occurred while loading the '{selection}' feature. Please check the logs.")
 
 # Footer
 st.markdown("---")

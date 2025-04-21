@@ -1,13 +1,11 @@
 import os
 import logging
-from log_config import setup_logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from db_utils import get_engine
 
 # Set up logging
-setup_logging(script_name="index_build")
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__) # Get logger for this module
 
 def get_existing_indexes(engine, table_name):
     """Retrieves existing indexes for a given table."""

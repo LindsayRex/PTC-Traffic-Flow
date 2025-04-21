@@ -104,8 +104,6 @@ By following this approach, you can strike a good balance between pre-calculatio
 
 
 
-
-
 **Add uniform loging accross app**  STATUS =  IMPLEMENTED 
 
 
@@ -117,7 +115,7 @@ logger = logging.getLogger(__name__)
 
 **1. Streamlit App Structure ux**  
 
-STATUS - NOT IMPLEMENTED
+STATUS = IMPLEMENTED
 
 Objective:  
 Create basic  Streamlit home page with no logon at all. Each feature below could be a page or a section within a page. Use st.sidebar for global filters like date range or LGA selection where applicable.
@@ -141,20 +139,13 @@ app/stremlit_color_pallet.py
 Graphics folder for website:
 app/gfx/ptc-logo-white.png
 
-
-
-
-
-
-
-
 -------------
  Write Test driven design tests first for each def and majopr app logic for testing using pytest. Then use python library Panel for UI components and HoloViews/hvPlot for plotting  with Folium for maps where specified. All components are mandatory, and details regarding labels, titles, dynamic updates, data requirements, and calculations are included for each. App stack uses  PostgreSQL database (stations and hourly_counts tables as previously defined) accessed via Python using SQLAlchemy within a Streamlit web application framework, where Panel objects are rendered.
 ---------------
 
 **Feature 1: Traffic Station Profile Dashboard **
 
-STATUS = IMPLEMENTED
+STATUS = NOT IMPLEMENTED
 
 Objective: Provide a quick, comprehensive view of a single traffic count station's characteristics and recent/typical trends.
 UI Components (Panel within Streamlit):

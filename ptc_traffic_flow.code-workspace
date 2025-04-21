@@ -1,0 +1,32 @@
+{
+	"folders": [
+		{
+			 // Use "." to refer to the folder containing this .code-workspace file
+			"path": "."
+		}
+	],
+	"settings": {
+        // Tells the Python Extension to activate the environment associated
+        // with the selected interpreter in new terminals.
+        "python.terminal.activateEnvironment": true,
+
+        // Set environment variables for the integrated terminal on Windows
+        "terminal.integrated.env.windows": {
+            // Set PYTHONPATH to the root of the workspace folder
+            // ${workspaceFolder} will correctly resolve based on the relative "path": "."
+            "PYTHONPATH": "${workspaceFolder}"
+        },
+        "cSpell.words": [
+            "bokeh",
+            "geoalchemy",
+            "holoviews",
+            "hvplot",
+            "numpy",
+            "psycopg",
+            "pytest",
+            "selectbox",
+            "sqlalchemy",
+            "streamlit"
+        ]
+	}
+}
