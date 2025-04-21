@@ -40,18 +40,21 @@ def render_station_profile():
     with st.spinner("Loading station data..."):
         logger.debug("Fetching station metadata")
         try:
-            station_df = get_all_station_metadata(None)  # None for _conn parameter as it's cached
+            station_df = get_all_station_metadata()
+            if station_df is None:
+                logger.error("get_all_station_metadata returned None, likely DB session issue.")
+                st.error("Error loading station data. Database connection might be unavailable.")
+                return
             logger.info(f"Retrieved {len(station_df)} station records")
         except Exception as e:
-            logger.error(f"Failed to fetch station metadata: {e}")
+            logger.error(f"Failed to fetch station metadata: {e}", exc_info=True)
             st.error("Error loading station data. Check logs for details.")
             return
     
     # Handle empty dataframe case
     if station_df.empty:
         logger.warning("No station data available in the database")
-        st.error("No station data available. Please check your database connection.")
-        return
+        st.warning("No station data found matching criteria.")
     
     # Create station selection options
     station_options = [f"{row['station_id']} - {row['road_name']}" for _, row in station_df.iterrows()]
@@ -77,10 +80,14 @@ def render_station_profile():
             
             # Get station details for display and mapping
             try:
-                station_details = get_station_details(None, selected_station_key)
-                logger.debug(f"Retrieved details for station key: {selected_station_key}")
+                station_details = get_station_details(selected_station_key)
+                if station_details is None:
+                    logger.error(f"get_station_details returned None for key {selected_station_key}")
+                    st.error("Could not load details for the selected station.")
+                else:
+                    logger.debug(f"Retrieved details for station key: {selected_station_key}")
             except Exception as e:
-                logger.error(f"Failed to fetch station details: {e}")
+                logger.error(f"Failed to fetch station details: {e}", exc_info=True)
                 st.error("Error loading station details. Check logs for details.")
                 return
             
@@ -100,35 +107,39 @@ def render_station_profile():
             logger.info(f"User selected direction: {selected_direction} ({selected_direction_desc})")
             
             # Date range calculation for data fetching
-            today = datetime.date.today()
-            start_date_90_days = today - datetime.timedelta(days=90)
-            start_date_full_year = today - datetime.timedelta(days=365)
+            # Use a fixed end date based on available data
+            fixed_end_date = datetime.date(2014, 12, 27)
+            start_date_90_days = fixed_end_date - datetime.timedelta(days=90)
+            start_date_full_year = fixed_end_date - datetime.timedelta(days=365)
             
             # The earliest start date we need
             start_date = min(start_date_90_days, start_date_full_year)
-            logger.debug(f"Data query date range: {start_date} to {today}")
+            logger.debug(f"Data query date range: {start_date} to {fixed_end_date}")
             
             # Fetch hourly data
             with st.spinner("Loading traffic data..."):
                 logger.debug(f"Fetching hourly data for station key: {selected_station_key}")
                 try:
                     hourly_data = get_hourly_data_for_stations(
-                        None,  # _conn parameter
                         [selected_station_key],
                         start_date,
-                        today,
+                        fixed_end_date,
                         directions=[selected_direction],
-                        classifications=[1],  # All vehicles
-                        required_cols=None  # Get all columns
+                        classifications=[1],
+                        required_cols=None
                     )
-                    if not hourly_data.empty:
+                    if hourly_data is None:
+                        logger.error(f"get_hourly_data_for_stations returned None for key {selected_station_key}")
+                        st.error("Could not load traffic data for the selected station.")
+                        hourly_data = pd.DataFrame()
+                    elif not hourly_data.empty:
                         logger.info(f"Retrieved {len(hourly_data)} hourly records for station {selected_station_id}")
                     else:
-                        logger.warning(f"No hourly data found for station {selected_station_id}")
+                        logger.warning(f"No hourly data found for station {selected_station_id} and selected criteria.")
                 except Exception as e:
-                    logger.error(f"Failed to fetch hourly data: {e}")
+                    logger.error(f"Failed to fetch hourly data: {e}", exc_info=True)
                     st.error("Error loading traffic data. Check logs for details.")
-                    hourly_data = pd.DataFrame()  # Empty dataframe to prevent errors
+                    hourly_data = pd.DataFrame()
     
     # 4. Create visualizations in the second column
     with col2:

@@ -4,19 +4,32 @@ from pathlib import Path
 from app.log_config import setup_logging
 from app.stremlit_colour_pallet import MAGENTA, BLACK, WHITE, LIGHT_GRAY, DARK_GRAY, STYLES
 
+# --- Page Configuration (MUST BE FIRST STREAMLIT COMMAND) ---
+st.set_page_config(
+    page_title="Traffic Data Analysis",
+    page_icon="app/gfx/ptc-logo-white.png",  # Ensure this path is correct relative to execution dir or use absolute
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+# --- End of Page Configuration ---
+
 # Setup logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Page Configuration
-st.set_page_config(
-    page_title="Traffic Data Analysis",
-    page_icon="app/gfx/ptc-logo-white.png",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# --- Now initialize and check Database Connection ---
+# Import db_utils here if it relies heavily on st commands like st.secrets
+from app.db_utils import SessionFactory, engine
 
-# Import feature functions
+if engine is None or SessionFactory is None:
+    logger.error("Database Engine or Session Factory failed to initialize. Stopping app.")
+    # This st.error call is now AFTER set_page_config, which is allowed.
+    st.error("Fatal Error: Could not establish database connection. Please check configuration and logs.")
+    st.stop()  # Stop script execution if DB connection failed
+else:
+    logger.info("Database Engine and Session Factory initialized successfully.")
+
+# Import feature functions (can be done after DB check)
 from app.features.feature_1_profile import render_station_profile
 from app.features.feature_2_peak import render_peak_analysis
 from app.features.feature_3_corridor import render_corridor_comparison
@@ -111,7 +124,11 @@ else:
     # Render selected feature
     feature_function = PAGES[selection]
     if feature_function:
-        feature_function()
+        try:
+            feature_function()
+        except Exception as e:
+            logger.error(f"Error rendering feature '{selection}': {e}", exc_info=True)
+            st.error(f"An error occurred while loading the '{selection}' feature. Please check the logs.")
 
 # Footer
 st.markdown("---")
