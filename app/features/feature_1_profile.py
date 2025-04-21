@@ -141,7 +141,9 @@ def render_station_profile():
                             start_date,  # Use dynamic start date
                             end_date,    # Use dynamic end date
                             directions=[selected_direction],
-                            classifications=[1],
+                            # --- FIX: Remove hardcoded classification filter ---
+                            # classifications=[1], # Removed this line
+                            # --- END FIX ---
                             required_cols=None
                         )
                         if hourly_data is None:
@@ -297,10 +299,8 @@ def render_station_profile():
                                     line_width=3
                                 )
                                 
-                                # Convert to html and display in Streamlit
-                                hvplot_html = hv.render(fig, backend='bokeh')
-                                # --- FIX: Add hidden label ---
-                                st.bokeh_chart(hvplot_html, use_container_width=True, label="Hourly Profile Chart", label_visibility="collapsed")
+                                # --- FIX: Display HoloViews/hvPlot object directly using Streamlit/Panel integration ---
+                                st.write(fig) # Streamlit can render Panel/HoloViews objects directly
                                 # --- END FIX ---
                             except Exception as e:
                                 logger.error(f"Failed to create hourly profile chart: {e}")
@@ -352,10 +352,8 @@ def render_station_profile():
                                 line_width=2
                             )
                             
-                            # Convert to html and display in Streamlit
-                            hvplot_html = hv.render(fig, backend='bokeh')
-                            # --- FIX: Add hidden label ---
-                            st.bokeh_chart(hvplot_html, use_container_width=True, label="Daily Trend Chart", label_visibility="collapsed")
+                            # --- FIX: Display HoloViews/hvPlot object directly using Streamlit/Panel integration ---
+                            st.write(fig) # Streamlit can render Panel/HoloViews objects directly
                             # --- END FIX ---
                         except Exception as e:
                             logger.error(f"Failed to create daily trends chart: {e}")

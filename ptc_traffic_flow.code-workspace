@@ -17,12 +17,14 @@
             "PYTHONPATH": "${workspaceFolder}"
         },
         "cSpell.words": [
+            "bokeh",
             "geoalchemy",
             "holoviews",
             "hvplot",
             "numpy",
             "psycopg",
             "pytest",
+            "selectbox",
             "sqlalchemy",
             "streamlit"
         ]
