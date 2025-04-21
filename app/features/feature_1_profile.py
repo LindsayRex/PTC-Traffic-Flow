@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import panel as pn
 import holoviews as hv
+from holoviews import render
 from holoviews import opts
 import hvplot.pandas
 import folium
@@ -12,6 +13,13 @@ from streamlit_folium import st_folium
 import datetime as dt
 import logging
 from typing import List, Dict, Optional, Tuple, Any
+import streamlit.components.v1 as components
+from bokeh.plotting import save, output_file
+from bokeh.resources import CDN
+import tempfile
+import os
+
+hv.extension('bokeh')
 
 # Import utility functions - using relative import
 from ..db_utils import (
@@ -19,11 +27,43 @@ from ..db_utils import (
     get_distinct_values,
     get_hourly_data_for_stations,
     get_all_station_metadata,
-    get_latest_data_date  # <-- Add this import
+    get_latest_data_date
 )
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
+
+def embed_bokeh_plot(hv_plot, height=450):
+    """Renders a HoloViews plot to Bokeh, saves as HTML, and returns HTML string."""
+    try:
+        bokeh_fig = render(hv_plot, backend='bokeh')
+        if not bokeh_fig:
+            logger.error("HoloViews render function returned None.")
+            return None
+
+        # Create a temporary HTML file
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode='w', encoding='utf-8') as tmpfile:
+            output_file(tmpfile.name, title="", mode='cdn')
+            save(bokeh_fig)
+            tmpfile_path = tmpfile.name
+            logger.debug(f"Saved Bokeh plot to temporary file: {tmpfile_path}")
+
+        # Read the HTML content
+        with open(tmpfile_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+
+        # Clean up the temporary file
+        try:
+            os.remove(tmpfile_path)
+            logger.debug(f"Removed temporary file: {tmpfile_path}")
+        except OSError as e:
+            logger.warning(f"Could not remove temporary file {tmpfile_path}: {e}")
+
+        return html_content
+
+    except Exception as e:
+        logger.error(f"Failed to render or save Bokeh plot: {e}", exc_info=True)
+        return None
 
 def render_station_profile():
     """Renders the Traffic Station Profile Dashboard feature."""
@@ -108,17 +148,16 @@ def render_station_profile():
             start_date_90_days = None
             start_date_full_year = None
             start_date = None
-            end_date = None  # Use 'end_date' instead of 'fixed_end_date'
+            end_date = None
 
             try:
                 logger.debug(f"Fetching latest data date for station {selected_station_key}, direction {selected_direction}")
                 latest_date = get_latest_data_date(selected_station_key, selected_direction)
 
                 if latest_date:
-                    end_date = latest_date  # Use the actual latest date as the end date
+                    end_date = latest_date
                     start_date_90_days = end_date - datetime.timedelta(days=90)
                     start_date_full_year = end_date - datetime.timedelta(days=365)
-                    # The earliest start date we need for fetching
                     start_date = min(start_date_90_days, start_date_full_year)
                     logger.info(f"Using dynamic date range based on latest data: {start_date} to {end_date}")
                 else:
@@ -131,19 +170,16 @@ def render_station_profile():
             # --- END DYNAMIC DATE RANGE CALCULATION ---
 
             # Fetch hourly data only if a valid date range was determined
-            hourly_data = pd.DataFrame()  # Initialize empty
-            if start_date and end_date and station_details:  # Check if dates are valid and details exist
+            hourly_data = pd.DataFrame()
+            if start_date and end_date and station_details:
                 with st.spinner("Loading traffic data..."):
                     logger.debug(f"Fetching hourly data for station key: {selected_station_key} from {start_date} to {end_date}")
                     try:
                         hourly_data = get_hourly_data_for_stations(
                             [selected_station_key],
-                            start_date,  # Use dynamic start date
-                            end_date,    # Use dynamic end date
+                            start_date,
+                            end_date,
                             directions=[selected_direction],
-                            # --- FIX: Remove hardcoded classification filter ---
-                            # classifications=[1], # Removed this line
-                            # --- END FIX ---
                             required_cols=None
                         )
                         if hourly_data is None:
@@ -165,9 +201,7 @@ def render_station_profile():
     
     # 4. Create visualizations in the second column
     with col2:
-        # Check if station_dict exists AND if the date range was successfully calculated
         if 'station_details' in locals() and station_details and start_date_full_year and start_date_90_days and end_date:
-            # Convert ORM object to dict for easier access if needed
             if not isinstance(station_details, dict):
                 try:
                     station_dict = {c.name: getattr(station_details, c.name) 
@@ -184,10 +218,8 @@ def render_station_profile():
             # Tab 1: Station Metadata and Map
             with tab1:
                 logger.debug("Rendering station info tab")
-                # Display station metadata
                 st.subheader(f"Station Metadata: {selected_station_id}")
                 
-                # Create a clean metadata display
                 metadata_cols = {
                     "Road Name": station_dict.get("road_name", "N/A"),
                     "LGA": station_dict.get("lga", "N/A"),
@@ -199,17 +231,11 @@ def render_station_profile():
                     "Quality Rating": station_dict.get("quality_rating", "N/A")
                 }
                 
-                # --- FIX: Convert values to string before creating DataFrame ---
                 metadata_items = [(k, str(v)) for k, v in metadata_cols.items()]
                 metadata_df = pd.DataFrame(metadata_items, columns=["Attribute", "Value"])
-                # --- END FIX ---
                 
-                # Display as a table
-                # --- FIX: Remove unsupported label arguments ---
                 st.table(metadata_df)
-                # --- END FIX ---
                 
-                # Display station location map
                 st.subheader(f"Location: {selected_station_id}")
                 
                 lat = station_dict.get("wgs84_latitude")
@@ -232,10 +258,7 @@ def render_station_profile():
                         icon=folium.Icon(color="red", icon="info-sign")
                     ).add_to(m)
                     
-                    # Display the map in Streamlit
-                    # --- FIX: Remove unsupported label arguments AGAIN ---
                     st_folium(m, width=700, height=500)
-                    # --- END FIX ---
                 else:
                     logger.warning(f"No location data available for station {selected_station_id}")
                     st.warning("No location data available for this station")
@@ -246,48 +269,38 @@ def render_station_profile():
                 st.subheader(f"Typical Hourly Traffic Profile ({selected_direction_desc})")
                 
                 if 'hourly_data' in locals() and not hourly_data.empty:
-                    # Process data for hourly profile chart
                     logger.debug("Processing yearly hourly data for profiles")
-                    # Filter for the last full year using DYNAMIC dates
                     year_data = hourly_data[
                         (hourly_data['count_date'] >= start_date_full_year) &
-                        (hourly_data['count_date'] <= end_date)  # Ensure upper bound is also dynamic
+                        (hourly_data['count_date'] <= end_date)
                     ].copy()
                     
                     if not year_data.empty:
-                        # Exclude public holidays
                         year_data = year_data[~year_data['is_public_holiday']]
+                        year_data['is_weekend'] = year_data['day_of_week'].isin([6, 7])
                         
-                        # Create weekday/weekend flag
-                        year_data['is_weekend'] = year_data['day_of_week'].isin([6, 7])  # 6=Sat, 7=Sun
-                        
-                        # Prepare data for plotting
                         hourly_profiles = []
                         
-                        # Process for weekdays
                         weekday_data = year_data[~year_data['is_weekend']].copy()
                         if not weekday_data.empty:
                             logger.debug(f"Processing {len(weekday_data)} weekday records")
                             weekday_profile = process_hourly_profile(weekday_data, 'Weekday')
                             hourly_profiles.append(weekday_profile)
                         
-                        # Process for weekends
                         weekend_data = year_data[year_data['is_weekend']].copy()
                         if not weekend_data.empty:
                             logger.debug(f"Processing {len(weekend_data)} weekend records")
                             weekend_profile = process_hourly_profile(weekend_data, 'Weekend')
                             hourly_profiles.append(weekend_profile)
                         
-                        # Combine profiles
                         if hourly_profiles:
                             profile_df = pd.concat(hourly_profiles)
-                            
+
                             logger.debug("Generating hourly profile chart")
-                            # Create the plot with hvplot/holoviews
                             try:
                                 fig = profile_df.hvplot.line(
-                                    x='Hour', 
-                                    y='Average Volume', 
+                                    x='Hour',
+                                    y='Average Volume',
                                     by='Period',
                                     title=f"Typical Hourly Traffic Profile ({selected_direction_desc})",
                                     xlabel="Hour of Day (0-23)",
@@ -298,12 +311,15 @@ def render_station_profile():
                                     height=400,
                                     line_width=3
                                 )
-                                
-                                # --- FIX: Display HoloViews/hvPlot object directly using Streamlit/Panel integration ---
-                                st.write(fig) # Streamlit can render Panel/HoloViews objects directly
-                                # --- END FIX ---
+
+                                html_plot = embed_bokeh_plot(fig, height=450)
+                                if html_plot:
+                                    components.html(html_plot, height=450)
+                                    logger.debug("Attempted to render hourly profile via st.components.html")
+                                else:
+                                    st.error("Failed to generate HTML for hourly profile plot.")
                             except Exception as e:
-                                logger.error(f"Failed to create hourly profile chart: {e}")
+                                logger.error(f"Failed to create or render hourly profile chart: {e}", exc_info=True)
                                 st.error("Error creating hourly profile chart. Check logs for details.")
                         else:
                             logger.warning("Insufficient data to create hourly profiles")
@@ -321,40 +337,43 @@ def render_station_profile():
                 st.subheader(f"Recent Daily Traffic Volume ({selected_direction_desc}) - Last 90 Days")
                 
                 if 'hourly_data' in locals() and not hourly_data.empty:
-                    # Filter for the last 90 days using DYNAMIC dates
                     logger.debug("Processing recent daily data for trends")
                     recent_data = hourly_data[
                         (hourly_data['count_date'] >= start_date_90_days) &
-                        (hourly_data['count_date'] <= end_date)  # Ensure upper bound is also dynamic
+                        (hourly_data['count_date'] <= end_date)
                     ].copy()
                     
                     if not recent_data.empty:
                         try:
-                            # Group by date to get daily totals
                             daily_df = recent_data.groupby('count_date')['daily_total'].mean().reset_index()
                             daily_df.columns = ['Date', 'Total Daily Volume']
                             
-                            # Sort by date
                             daily_df = daily_df.sort_values('Date')
-                            
+
                             logger.debug(f"Generated daily trends for {len(daily_df)} days")
                             
-                            # Create the plot with hvplot/holoviews
-                            fig = daily_df.hvplot.line(
-                                x='Date', 
-                                y='Total Daily Volume',
-                                title=f"Recent Daily Traffic Volume ({selected_direction_desc}) - Last 90 Days",
-                                xlabel="Date",
-                                ylabel="Total Daily Volume",
-                                grid=True,
-                                width=700,
-                                height=400,
-                                line_width=2
-                            )
-                            
-                            # --- FIX: Display HoloViews/hvPlot object directly using Streamlit/Panel integration ---
-                            st.write(fig) # Streamlit can render Panel/HoloViews objects directly
-                            # --- END FIX ---
+                            try:
+                                fig = daily_df.hvplot.line(
+                                    x='Date',
+                                    y='Total Daily Volume',
+                                    title=f"Recent Daily Traffic Volume ({selected_direction_desc}) - Last 90 Days",
+                                    xlabel="Date",
+                                    ylabel="Total Daily Volume",
+                                    grid=True,
+                                    width=700,
+                                    height=400,
+                                    line_width=2
+                                )
+
+                                html_plot = embed_bokeh_plot(fig, height=450)
+                                if html_plot:
+                                    components.html(html_plot, height=450)
+                                    logger.debug("Attempted to render daily trends via st.components.html")
+                                else:
+                                    st.error("Failed to generate HTML for daily trends plot.")
+                            except Exception as e:
+                                logger.error(f"Failed to create or render daily trends chart: {e}", exc_info=True)
+                                st.error("Error creating daily trends chart. Check logs for details.")
                         except Exception as e:
                             logger.error(f"Failed to create daily trends chart: {e}")
                             st.error("Error creating daily trends chart. Check logs for details.")
@@ -365,7 +384,6 @@ def render_station_profile():
                     logger.warning(f"No hourly data fetched for station {selected_station_id}")
                     st.warning("No hourly data available for this station and direction.")
         elif 'station_details' in locals() and station_details:
-            # This case handles when station details are loaded but date range failed
             st.warning("Could not determine the date range for analysis based on available data for this station and direction.")
         else:
             logger.info("No station selected or station details not available")
@@ -383,17 +401,14 @@ def process_hourly_profile(data: pd.DataFrame, period_name: str) -> pd.DataFrame
         DataFrame with columns ['Hour', 'Average Volume', 'Period']
     """
     logger.debug(f"Processing hourly profile for {period_name}")
-    # Create a list to hold hourly data
     hourly_data = []
     
-    # Process each hour column
     for hour in range(24):
         hour_col = f'hour_{hour:02d}'
         if hour_col in data.columns:
             avg_volume = data[hour_col].mean()
             hourly_data.append({'Hour': hour, 'Average Volume': avg_volume, 'Period': period_name})
     
-    # Create a DataFrame from the processed data
     result_df = pd.DataFrame(hourly_data)
     logger.debug(f"Created hourly profile with {len(result_df)} data points")
     return result_df

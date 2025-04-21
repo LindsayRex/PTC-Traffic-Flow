@@ -9,18 +9,45 @@ from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
 import os
 from typing import List, Optional, Tuple, Dict, Any
-from models import Base, Station, HourlyCount
+from app.models import Base, Station, HourlyCount
 
 logger = logging.getLogger(__name__)
+
+# --- NEW HELPER FUNCTION ---
+def _get_database_url() -> Optional[str]:
+    """Gets the database URL, trying Streamlit secrets first, then environment variables."""
+    db_url = None
+    try:
+        # Try Streamlit secrets first
+        if hasattr(st, 'secrets'):
+            db_url = st.secrets.get("environment", {}).get("DATABASE_URL")
+            if db_url:
+                logger.debug("Database URL retrieved from Streamlit secrets.")
+                return db_url
+    except Exception as e: # Catch potential errors during secrets access
+        logger.warning(f"Could not retrieve DATABASE_URL from Streamlit secrets ({type(e).__name__}). Falling back to environment variable.")
+
+    # Fallback to environment variable
+    db_url = os.environ.get("DATABASE_URL")
+    if db_url:
+        logger.debug("Database URL retrieved from environment variable.")
+        return db_url
+
+    logger.error("DATABASE_URL not found in Streamlit secrets or environment variable.")
+    return None
+# --- END HELPER FUNCTION ---
 
 @st.cache_resource
 def get_engine():
     """Creates and returns a SQLAlchemy engine, caching the result."""
     try:
-        db_url = st.secrets["environment"]["DATABASE_URL"]
+        # --- MODIFIED: Use helper function ---
+        db_url = _get_database_url()
+        # --- END MODIFICATION ---
+
         if not db_url:
-            logger.error("DATABASE_URL not found in st.secrets['environment']. Check .streamlit/secrets.toml")
-            st.error("Database configuration error: DATABASE_URL not found in Streamlit secrets.")
+            # Error logged in _get_database_url
+            st.error("Database configuration error: DATABASE_URL not found.")
             return None
 
         logger.info("Attempting to create database engine...")
@@ -35,10 +62,6 @@ def get_engine():
             st.error(f"Database connection failed: {conn_err}")
             return None
 
-    except KeyError:
-        logger.error("Failed to find ['environment']['DATABASE_URL'] in st.secrets. Check .streamlit/secrets.toml structure.")
-        st.error("Database configuration error: Could not find DATABASE_URL in Streamlit secrets structure.")
-        return None
     except Exception as e:
         logger.error(f"An unexpected error occurred during engine creation: {e}", exc_info=True)
         st.error(f"An unexpected error occurred during database setup: {e}")
@@ -64,28 +87,32 @@ def get_session_factory(_engine):
 
 SessionFactory = get_session_factory(engine)
 
+# --- FIX: Ensure rollback on exception in get_db_session ---
 @contextmanager
 def get_db_session() -> Session:
     """Provides a transactional scope around a series of operations."""
-    if SessionFactory is None:
-        logger.error("Session factory is not available.")
-        yield None
-        return
+    engine = get_engine()
+    if engine is None:
+        logger.error("Cannot get DB session: Engine is None.")
+        raise ConnectionError("Database engine is not available.") # Raise specific error
 
-    session = SessionFactory()
-    logger.debug(f"DB Session {id(session)} created.")
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    session = SessionLocal()
+    session_id = id(session) # Get session ID for logging
+    logger.debug(f"DB Session {session_id} opened.")
     try:
         yield session
-        session.commit()
-        logger.debug(f"DB Session {id(session)} committed.")
+        session.commit() # Commit if yield succeeds
+        logger.debug(f"DB Session {session_id} committed successfully.")
     except Exception as e:
-        logger.error(f"DB Session {id(session)} failed: {e}", exc_info=True)
-        session.rollback()
-        logger.debug(f"DB Session {id(session)} rolled back.")
-        raise
+        logger.error(f"DB Session {session_id} failed: {e}", exc_info=True)
+        session.rollback() # Rollback on any exception during yield
+        logger.debug(f"DB Session {session_id} rolled back due to exception.")
+        raise # Re-raise the exception after rollback
     finally:
         session.close()
-        logger.debug(f"DB Session {id(session)} closed.")
+        logger.debug(f"DB Session {session_id} closed.")
+# --- END FIX ---
 
 # --- Query Functions ---
 # Use @st.cache_data for functions that return data based on inputs
