@@ -1,6 +1,11 @@
+import sys
+from pathlib import Path
+
+# Add the project root to the PYTHONPATH
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
 import streamlit as st
 import logging
-from pathlib import Path
 from app.log_config import setup_logging
 from app.stremlit_colour_pallet import MAGENTA, BLACK, WHITE, LIGHT_GRAY, DARK_GRAY, STYLES
 
