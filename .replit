@@ -17,7 +17,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "uv pip install -r requirements.txt"
+args = "PYTHONPATH=. uv pip install -r requirements.txt altair --no-cache"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
