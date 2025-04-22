@@ -1,8 +1,8 @@
 import streamlit as st
 import logging
 from pathlib import Path
-from log_config import setup_logging
-from stremlit_colour_pallet import MAGENTA, BLACK, WHITE, LIGHT_GRAY, DARK_GRAY, STYLES
+from app.log_config import setup_logging
+from app.stremlit_colour_pallet import MAGENTA, BLACK, WHITE, LIGHT_GRAY, DARK_GRAY, STYLES
 
 # --- Page Configuration (MUST BE FIRST STREAMLIT COMMAND) ---
 st.set_page_config(
@@ -20,7 +20,7 @@ logger.info("--- Streamlit App Starting ---")
 
 # --- Database Initialization ---
 # Import the function that handles initialization and caching
-from db_utils import init_db_resources, get_db_session
+from app.db_utils import init_db_resources, get_db_session
 
 logger.info("Attempting to initialize database resources...")
 # Call the function to get/create the engine and session factory
@@ -40,16 +40,16 @@ else:
 # Ensure these features now use get_db_session() to get a session when needed,
 # instead of relying on a globally imported SessionFactory or engine.
 # (This might require refactoring within the feature files themselves)
-from features.feature_1_profile import render_station_profile
-from features.feature_2_peak import render_peak_analysis
-from features.feature_3_corridor import render_corridor_comparison
-from features.feature_4_heavy_vehicle import render_heavy_vehicle_explorer
-from features.feature_5_weekday_weekend import render_weekday_weekend_comparison
-from features.feature_6_quality import render_data_quality_overview
-from features.feature_7_snapshot import render_lga_suburb_snapshot
-from features.feature_8_directional import render_directional_flow_analysis
-from features.feature_9_hierarchy import render_hierarchy_benchmarking
-from features.feature_10_seasonal import render_seasonal_trend_analyzer
+from app.features.feature_1_profile import render_station_profile
+from app.features.feature_2_peak import render_peak_analysis
+from app.features.feature_3_corridor import render_corridor_comparison
+from app.features.feature_4_heavy_vehicle import render_heavy_vehicle_explorer
+from app.features.feature_5_weekday_weekend import render_weekday_weekend_comparison
+from app.features.feature_6_quality import render_data_quality_overview
+from app.features.feature_7_snapshot import render_lga_suburb_snapshot
+from app.features.feature_8_directional import render_directional_flow_analysis
+from app.features.feature_9_hierarchy import render_hierarchy_benchmarking
+from app.features.feature_10_seasonal import render_seasonal_trend_analyzer
 
 # --- Custom CSS ---
 st.markdown(f"""
