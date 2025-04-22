@@ -1,4 +1,3 @@
-
 from sqlalchemy import (
     Column, Integer, String, Boolean, Float, Date, ForeignKey,
     Index, BigInteger
@@ -82,7 +81,16 @@ class HourlyCount(Base):
     # Relationship with Station
     station = relationship("Station", back_populates="hourly_counts")
 
+    # Add indexes if desired (optional, but good practice to match DB)
+    __table_args__ = (
+        Index('ix_hourly_counts_station_key', 'station_key'),
+        Index('ix_hourly_counts_count_date', 'count_date'),
+        Index('ix_hourly_counts_classification_seq', 'classification_seq'),
+        Index('ix_hourly_counts_year', 'year'),
+        Index('ix_hourly_counts_month', 'month'),
+        Index('ix_hourly_counts_day_of_week', 'day_of_week'),
+        Index('idx_hourly_composite', 'station_key', 'count_date', 'classification_seq'),
+    )
+
 # Create indexes
 Index('idx_station_composite', Station.lga, Station.suburb, Station.road_name)
-Index('idx_hourly_composite', HourlyCount.station_key, HourlyCount.count_date, 
-      HourlyCount.classification_seq)

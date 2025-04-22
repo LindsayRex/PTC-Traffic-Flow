@@ -27,7 +27,8 @@ from ..db_utils import (
     get_distinct_values,
     get_hourly_data_for_stations,
     get_all_station_metadata,
-    get_latest_data_date
+    get_latest_data_date,
+    get_db_session
 )
 
 # Get logger for this module
@@ -77,12 +78,24 @@ def render_station_profile():
     with st.spinner("Loading station data..."):
         logger.debug("Fetching station metadata")
         try:
-            station_df = get_all_station_metadata()
-            if station_df is None:
-                logger.error("get_all_station_metadata returned None, likely DB session issue.")
-                st.error("Error loading station data. Database connection might be unavailable.")
+            session = get_db_session()
+            if session:
+                try:
+                    station_df = get_all_station_metadata(session)
+                    if station_df is None:
+                        logger.error("get_all_station_metadata returned None, likely DB session issue.")
+                        st.error("Error loading station data. Database connection might be unavailable.")
+                        return
+                    logger.info(f"Retrieved {len(station_df)} station records")
+                except Exception as e:
+                    logger.error(f"Failed to fetch station metadata: {e}", exc_info=True)
+                    st.error("Error loading station data. Check logs for details.")
+                    return
+                finally:
+                    session.close()
+            else:
+                st.error("Could not get database session.")
                 return
-            logger.info(f"Retrieved {len(station_df)} station records")
         except Exception as e:
             logger.error(f"Failed to fetch station metadata: {e}", exc_info=True)
             st.error("Error loading station data. Check logs for details.")
@@ -117,12 +130,24 @@ def render_station_profile():
             
             # Get station details for display and mapping
             try:
-                station_details = get_station_details(selected_station_key)
-                if station_details is None:
-                    logger.error(f"get_station_details returned None for key {selected_station_key}")
-                    st.error("Could not load details for the selected station.")
+                session = get_db_session()
+                if session:
+                    try:
+                        station_details = get_station_details(session, selected_station_key)
+                        if station_details is None:
+                            logger.error(f"get_station_details returned None for key {selected_station_key}")
+                            st.error("Could not load details for the selected station.")
+                        else:
+                            logger.debug(f"Retrieved details for station key: {selected_station_key}")
+                    except Exception as e:
+                        logger.error(f"Failed to fetch station details: {e}", exc_info=True)
+                        st.error("Error loading station details. Check logs for details.")
+                        return
+                    finally:
+                        session.close()
                 else:
-                    logger.debug(f"Retrieved details for station key: {selected_station_key}")
+                    st.error("Could not get database session.")
+                    return
             except Exception as e:
                 logger.error(f"Failed to fetch station details: {e}", exc_info=True)
                 st.error("Error loading station details. Check logs for details.")
@@ -151,19 +176,29 @@ def render_station_profile():
             end_date = None
 
             try:
-                logger.debug(f"Fetching latest data date for station {selected_station_key}, direction {selected_direction}")
-                latest_date = get_latest_data_date(selected_station_key, selected_direction)
+                session = get_db_session()
+                if session:
+                    try:
+                        logger.debug(f"Fetching latest data date for station {selected_station_key}, direction {selected_direction}")
+                        latest_date = get_latest_data_date(session, selected_station_key, selected_direction)
 
-                if latest_date:
-                    end_date = latest_date
-                    start_date_90_days = end_date - datetime.timedelta(days=90)
-                    start_date_full_year = end_date - datetime.timedelta(days=365)
-                    start_date = min(start_date_90_days, start_date_full_year)
-                    logger.info(f"Using dynamic date range based on latest data: {start_date} to {end_date}")
+                        if latest_date:
+                            end_date = latest_date
+                            start_date_90_days = end_date - datetime.timedelta(days=90)
+                            start_date_full_year = end_date - datetime.timedelta(days=365)
+                            start_date = min(start_date_90_days, start_date_full_year)
+                            logger.info(f"Using dynamic date range based on latest data: {start_date} to {end_date}")
+                        else:
+                            logger.warning(f"No latest data date found for station {selected_station_key}, direction {selected_direction}. Cannot calculate dynamic range.")
+                            st.warning("No data found for this station and direction to determine date range.")
+                    except Exception as e:
+                        logger.error(f"Error fetching latest data date: {e}", exc_info=True)
+                        st.error("Error determining data date range.")
+                    finally:
+                        session.close()
                 else:
-                    logger.warning(f"No latest data date found for station {selected_station_key}, direction {selected_direction}. Cannot calculate dynamic range.")
-                    st.warning("No data found for this station and direction to determine date range.")
-
+                    st.error("Could not get database session.")
+                    return
             except Exception as e:
                 logger.error(f"Error fetching latest data date: {e}", exc_info=True)
                 st.error("Error determining data date range.")
@@ -175,21 +210,34 @@ def render_station_profile():
                 with st.spinner("Loading traffic data..."):
                     logger.debug(f"Fetching hourly data for station key: {selected_station_key} from {start_date} to {end_date}")
                     try:
-                        hourly_data = get_hourly_data_for_stations(
-                            [selected_station_key],
-                            start_date,
-                            end_date,
-                            directions=[selected_direction],
-                            required_cols=None
-                        )
-                        if hourly_data is None:
-                            logger.error(f"get_hourly_data_for_stations returned None for key {selected_station_key}")
-                            st.error("Could not load traffic data for the selected station.")
-                            hourly_data = pd.DataFrame()
-                        elif not hourly_data.empty:
-                            logger.info(f"Retrieved {len(hourly_data)} hourly records for station {selected_station_id}")
+                        session = get_db_session()
+                        if session:
+                            try:
+                                hourly_data = get_hourly_data_for_stations(
+                                    session,
+                                    [selected_station_key],
+                                    start_date,
+                                    end_date,
+                                    directions=[selected_direction],
+                                    required_cols=None
+                                )
+                                if hourly_data is None:
+                                    logger.error(f"get_hourly_data_for_stations returned None for key {selected_station_key}")
+                                    st.error("Could not load traffic data for the selected station.")
+                                    hourly_data = pd.DataFrame()
+                                elif not hourly_data.empty:
+                                    logger.info(f"Retrieved {len(hourly_data)} hourly records for station {selected_station_id}")
+                                else:
+                                    logger.warning(f"No hourly data found for station {selected_station_id} and selected criteria.")
+                            except Exception as e:
+                                logger.error(f"Failed to fetch hourly data: {e}", exc_info=True)
+                                st.error("Error loading traffic data. Check logs for details.")
+                                hourly_data = pd.DataFrame()
+                            finally:
+                                session.close()
                         else:
-                            logger.warning(f"No hourly data found for station {selected_station_id} and selected criteria.")
+                            st.error("Could not get database session.")
+                            return
                     except Exception as e:
                         logger.error(f"Failed to fetch hourly data: {e}", exc_info=True)
                         st.error("Error loading traffic data. Check logs for details.")
