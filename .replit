@@ -17,11 +17,11 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PYTHONPATH=. uv pip install -r requirements.txt"
+args = "uv pip install -r requirements.txt"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PYTHONPATH=. streamlit run app/main_app.py"
+args = "streamlit run app/main_app.py"
 
 [[workflows.workflow]]
 name = "Run Ingestion - load  sample data in"
