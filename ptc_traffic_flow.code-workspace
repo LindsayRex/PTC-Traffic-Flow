@@ -18,6 +18,7 @@
         },
         "cSpell.words": [
             "bokeh",
+            "funcs",
             "geoalchemy",
             "holoviews",
             "hvplot",
@@ -26,7 +27,9 @@
             "pytest",
             "selectbox",
             "sqlalchemy",
-            "streamlit"
-        ]
+            "streamlit",
+            "stremlit"
+        ],
+        "workbench.colorCustomizations": {}
 	}
 }

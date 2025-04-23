@@ -175,10 +175,19 @@ def get_hourly_data_for_stations(_session, station_keys: list, start_date, end_d
 def get_distinct_values(_session, column_name: str, table=Station):
     """
     Fetches distinct values from a specified column in a table.
+    Includes validation to ensure the column exists on the table.
     """
     if _session is None:
         logger.error("Database session is None in get_distinct_values.")
         return None
+
+    # --- Start of Added Validation ---
+    if not hasattr(table, column_name):
+        logger.error(f"Invalid column name '{column_name}' provided for table '{table.__tablename__}'.")
+        st.error(f"Invalid column specified: {column_name}")
+        return None
+    # --- End of Added Validation ---
+
     try:
         logger.info(f"Querying distinct values for column '{column_name}' in table '{table.__tablename__}'.")
         column = getattr(table, column_name)
@@ -191,11 +200,34 @@ def get_distinct_values(_session, column_name: str, table=Station):
         st.error(f"Failed to load distinct values for column '{column_name}'.")
         return None
 
-def update_station_geometries(conn):
+@contextmanager
+def session_scope():
+    """Provide a transactional scope around a series of operations."""
+    session = get_db_session()
+    if session is None:
+        # Handle case where session creation failed (already logged in get_db_session)
+        yield None
+        return # Exit the generator
+
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        logger.error(f"Session rollback due to error: {e}", exc_info=True)
+        session.rollback()
+        raise # Re-raise the exception after rollback
+    finally:
+        if session:
+            session.close()
+            logger.debug("Database session closed.")
+
+def update_station_geometries():
     """Update PostGIS geometries for all stations."""
-    with get_db_session() as session:
-        if not session: return
-        
+    with session_scope() as session:
+        if not session:
+            st.error("Database session not available for updating geometries.")
+            return
+
         stmt = update(Station).values(
             location_geom=func.ST_SetSRID(
                 func.ST_MakePoint(
@@ -205,6 +237,5 @@ def update_station_geometries(conn):
                 4326
             )
         ).where(Station.location_geom.is_(None))
-        
+
         session.execute(stmt)
-        session.commit()

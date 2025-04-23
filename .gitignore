@@ -160,8 +160,6 @@ attached_assets/
 .streamlit/secrets.toml
 
 
-
-
 # ignore folder contents
 logs/*
 !logs/
@@ -173,4 +171,6 @@ ppm/
 # vs code settings
 
 .devcontainer/
+.vscode/*
+.vscode-test/
 

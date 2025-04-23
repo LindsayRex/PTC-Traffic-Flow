@@ -95,6 +95,8 @@ def load_feature_modules(logger):
 
 def apply_custom_css():
     """Applies custom CSS styles using st.markdown."""
+    # NB: unsafe_allow_html=True is necessary here to inject <style> tags.
+    # Ensure the CSS content itself is safe and developer-controlled.
     st.markdown(f"""
         <style>
         .stApp {{ background-color: {BLACK}; color: {WHITE}; }}
@@ -112,15 +114,21 @@ def display_banner(logger, logo_path=LOGO_PATH):
         with col1:
             st.image(str(logo_path), width=100)
         with col2:
+            # WARNING: unsafe_allow_html=True is used. Ensure STYLES['title'] is safe
+            # and does not contain untrusted user input to prevent XSS.
             st.markdown(f"<h1 style='{STYLES['title']}'>Traffic Data Analysis</h1>", unsafe_allow_html=True)
     else:
         logger.warning(f"Logo file not found at: {logo_path.resolve()}")
         st.error("Logo file not found, banner title only.")
+        # WARNING: unsafe_allow_html=True is used. Ensure STYLES['title'] is safe
+        # and does not contain untrusted user input to prevent XSS.
         st.markdown(f"<h1 style='{STYLES['title']}'>Traffic Data Analysis</h1>", unsafe_allow_html=True)
 
 
 def display_sidebar_navigation(pages):
     """Displays the sidebar navigation radio buttons."""
+    # WARNING: unsafe_allow_html=True is used. Ensure MAGENTA is a safe constant
+    # and does not contain untrusted user input to prevent XSS.
     st.sidebar.markdown(f"<h2 style='color: {MAGENTA}'>Navigation</h2>", unsafe_allow_html=True)
     if not pages:
         st.sidebar.warning("No features available.")
@@ -136,14 +144,18 @@ def display_sidebar_navigation(pages):
 
 def display_global_filters():
     """Displays global filters in the sidebar."""
+    # WARNING: unsafe_allow_html=True is used. Ensure MAGENTA is a safe constant
+    # and does not contain untrusted user input to prevent XSS.
     st.sidebar.markdown(f"<h3 style='color: {MAGENTA}'>Global Filters</h3>", unsafe_allow_html=True)
-    # Keep filters simple for now, return values if needed later
     st.sidebar.date_input("Date Range", [])
     st.sidebar.selectbox("Region", ["All Regions", "Sydney", "Regional NSW"])
     # Add return values if these filters need to be passed to features
 
 def render_home_page():
     """Renders the content for the Home page."""
+    # WARNING: unsafe_allow_html=True is used. Ensure STYLES['content'] is safe
+    # and does not contain untrusted user input to prevent XSS.
+    # Also ensure the static HTML structure is safe.
     st.markdown(f"""
         <div style='{STYLES["content"]}'>
             <h2>Welcome to Traffic Data Analysis</h2>
