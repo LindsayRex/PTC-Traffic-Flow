@@ -5,14 +5,40 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from models import Base
 
+# For TOML parsing
+import tomli
+
 # Set up logging
-setup_logging(script_name="init_db")  # Pass the script name
+setup_logging(script_name="init_db")
 logger = logging.getLogger(__name__)
+
+def get_database_url():
+    # 1. Try environment variable
+    db_url = os.environ.get('DATABASE_URL')
+    if db_url:
+        logger.info("Loaded DATABASE_URL from environment variable.")
+        return db_url
+
+    # 2. Try .streamlit/secrets.toml
+    secrets_path = os.path.join(os.path.dirname(__file__), '..', '.streamlit', 'secrets.toml')
+    try:
+        with open(secrets_path, "rb") as f:
+            secrets = tomli.load(f)
+            db_url = secrets.get("DATABASE_URL")
+            if db_url:
+                logger.info("Loaded DATABASE_URL from .streamlit/secrets.toml.")
+                return db_url
+    except FileNotFoundError:
+        logger.error(f"secrets.toml not found at {secrets_path}")
+    except Exception as e:
+        logger.error(f"Error reading secrets.toml: {e}")
+
+    raise RuntimeError("DATABASE_URL not found in environment or .streamlit/secrets.toml")
 
 def init_db():
     """Initialize the database with station reference data"""
     logger.info("Starting database initialization process")
-    DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/traffic_db')
+    DATABASE_URL = get_database_url()
     logger.info(f"Using database URL: {DATABASE_URL}")
 
     engine = create_engine(DATABASE_URL)

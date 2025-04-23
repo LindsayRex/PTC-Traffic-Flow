@@ -1,4 +1,5 @@
 {
+    "python.defaultInterpreterPath": "C:\\Users\\linds\\.conda\\envs\\traffic_flow\\python.exe",
     "python.testing.pytestArgs": [
         "tests/"
     ],
