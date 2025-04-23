@@ -22,14 +22,21 @@
             "geoalchemy",
             "holoviews",
             "hvplot",
+            "makepoint",
             "numpy",
             "psycopg",
             "pytest",
             "selectbox",
+            "sess",
+            "sessionmaker",
             "sqlalchemy",
             "streamlit",
             "stremlit"
         ],
-        "workbench.colorCustomizations": {}
+        "workbench.colorCustomizations": {},
+        "github.copilot.chat.codesearch.enabled": true,
+        "github.copilot.chat.reviewSelection.instructions": [
+            
+        ]
 	}
 }

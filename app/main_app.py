@@ -1,6 +1,12 @@
 import sys
 from pathlib import Path
 import logging
+import os
+
+# Set environment variable to disable the welcome message
+# Must be set before importing streamlit
+os.environ['STREAMLIT_BROWSER_GATHER_USAGE_STATS'] = 'false'
+
 import streamlit as st
 
 # --- Project Setup ---
