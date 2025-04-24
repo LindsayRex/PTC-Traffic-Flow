@@ -4,6 +4,7 @@ import sys
 import warnings
 import pytest
 from pathlib import Path
+from unittest.mock import patch
 
 # Import SAWarning early for the filter
 try:
@@ -26,7 +27,6 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(PROJECT_ROOT))
 
 # Now it's safe to import other modules if needed
-from unittest.mock import patch
 
 
 @pytest.fixture(scope="session", autouse=True)

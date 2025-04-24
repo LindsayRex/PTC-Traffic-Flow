@@ -51,15 +51,28 @@ def create_session_factory(db_engine):
         logger.error(f"Failed to create session factory: {e}", exc_info=True)
         return None
 
-@st.cache_resource
-def init_db_resources():
+# Initializes and returns the engine and session factory with stale connection handling
+def init_db_resources() -> Tuple[Optional[Any], Optional[Any]]:
     """Initializes and returns the engine and session factory."""
     logger.debug("Initializing database resources")
     engine = get_engine()
     session_factory = create_session_factory(engine)
+    # Short-circuit on failure
     if engine is None or session_factory is None:
         logger.error("Failed to initialize one or more DB resources.")
         return None, None
+    # Check for stale connection and retry once
+    try:
+        with engine.connect():
+            pass
+    except Exception as e:
+        logger.warning(f"Stale DB connection detected: {e}")
+        # Reinitialize resources
+        engine = get_engine()
+        session_factory = create_session_factory(engine)
+        if engine is None or session_factory is None:
+            logger.error("Failed to initialize one or more DB resources after retry.")
+            return None, None
     return engine, session_factory
 
 def get_db_session():
