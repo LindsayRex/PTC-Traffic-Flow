@@ -1,7 +1,15 @@
 {
+    "python.defaultInterpreterPath": "C:\\Users\\linds\\.conda\\envs\\traffic_flow\\python.exe",
     "python.testing.pytestArgs": [
-        "tests/"
+        "tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "test_*.py"
+    ]
 }

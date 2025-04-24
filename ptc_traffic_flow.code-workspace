@@ -18,15 +18,25 @@
         },
         "cSpell.words": [
             "bokeh",
+            "funcs",
             "geoalchemy",
             "holoviews",
             "hvplot",
+            "makepoint",
             "numpy",
             "psycopg",
             "pytest",
             "selectbox",
+            "sess",
+            "sessionmaker",
             "sqlalchemy",
-            "streamlit"
+            "streamlit",
+            "stremlit"
+        ],
+        "workbench.colorCustomizations": {},
+        "github.copilot.chat.codesearch.enabled": true,
+        "github.copilot.chat.reviewSelection.instructions": [
+            
         ]
 	}
 }

@@ -2,8 +2,7 @@ from sqlalchemy import (
     Column, Integer, String, Boolean, Float, Date, ForeignKey,
     Index, BigInteger
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 from geoalchemy2 import Geometry
 
 Base = declarative_base()
