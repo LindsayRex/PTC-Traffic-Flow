@@ -163,7 +163,9 @@ attached_assets/
 # ignore folder contents
 logs/*
 !logs/
-ppm/
+data/*
+!data/
+
 
 # ignore files in folder
 

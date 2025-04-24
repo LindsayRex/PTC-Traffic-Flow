@@ -5,9 +5,4 @@
 
 From the project root (`ptc_traffic_flow`), run:
 
-```powershell
-$env:PYTHONPATH="."
-streamlit run [main_app.py](http://_vscodecontentref_/1)
-
-
-
+streamlit run app/main_app.py
