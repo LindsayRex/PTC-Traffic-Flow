@@ -1,10 +1,10 @@
 {
 	"folders": [
-		{
-			 // Use "." to refer to the folder containing this .code-workspace file
-			"path": "."
-		}
-	],
+        {
+            "name": "ptc_traffic_flow",
+            "path": "."
+        }
+    ],
 	"settings": {
         // Tells the Python Extension to activate the environment associated
         // with the selected interpreter in new terminals.
