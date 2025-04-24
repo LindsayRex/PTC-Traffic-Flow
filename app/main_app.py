@@ -59,7 +59,6 @@ def initialize_database(logger):
         logger.error(f"Database initialization failed: {e}", exc_info=True)
         st.error("Fatal Error: Could not establish database connection. App cannot continue.")
         st.stop() # Stop script execution
-        return None, None # Return None explicitly, though st.stop() halts
 
 def load_feature_modules(logger):
     """Dynamically imports and returns the feature rendering functions."""
