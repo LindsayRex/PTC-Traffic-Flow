@@ -8,7 +8,7 @@ import streamlit as st
 import inspect # <-- Import inspect module
 
 # --- FIX: Add default configuration ---
-DEFAULT_LOG_LEVEL = "DEBUG"
+DEFAULT_LOG_LEVEL = "ERROR"
 DEFAULT_LOG_FORMAT = "%(asctime)s - %(name)-25s - %(levelname)-8s - %(message)s"
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # --- END FIX ---
