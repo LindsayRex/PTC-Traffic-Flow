@@ -169,8 +169,13 @@ ppm/
 
 
 # vs code settings
-
 .devcontainer/
 .vscode/*
 .vscode-test/
+settings.json
+mcp.json
 
+#Copilot files. 
+copilot-instructions.md
+copilot-instructions.json
+copilot-instructions.yaml
