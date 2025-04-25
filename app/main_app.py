@@ -1,19 +1,19 @@
 import sys
-from pathlib import Path
 import logging
 import os
+from pathlib import Path
 
 # Set environment variable to disable the welcome message
 # Must be set before importing streamlit
 os.environ['STREAMLIT_BROWSER_GATHER_USAGE_STATS'] = 'false'
 
-import streamlit as st
+# Import path utilities first to ensure proper path setup
+from app.utils.path_utils import ensure_project_root_in_path, get_project_root, get_app_root, normalize_path
 
-# --- Project Setup ---
-# Add the project root to the PYTHONPATH
-# Ensure this runs early if imports depend on it
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-sys.path.append(str(PROJECT_ROOT))
+# Ensure the project root is in the Python path
+ensure_project_root_in_path()
+
+import streamlit as st
 
 # --- Local Imports (Grouped after path setup) ---
 from app.log_config import setup_logging
@@ -21,7 +21,8 @@ from app.stremlit_colour_pallet import MAGENTA, BLACK, WHITE, DARK_GRAY, STYLES
 from app.db_utils import init_db_resources
 
 # --- Constants ---
-LOGO_PATH = Path("app/gfx/ptc-logo-white.svg")
+LOGO_PATH = normalize_path('app/gfx/ptc-logo-white.svg')
+LOGO_ICON_PATH = normalize_path('app/gfx/ptc-logo-white.png')
 
 # --- Core Functions ---
 
@@ -29,7 +30,7 @@ def configure_page():
     """Sets the Streamlit page configuration."""
     st.set_page_config(
         page_title="Traffic Data Analysis",
-        page_icon="app/gfx/ptc-logo-white.png", # Consider making this relative or absolute
+        page_icon=str(LOGO_ICON_PATH),  # Ensure string representation for Streamlit
         layout="wide",
         initial_sidebar_state="expanded"
     )
@@ -114,7 +115,7 @@ def apply_custom_css():
 
 def display_banner(logger, logo_path=LOGO_PATH):
     """Displays the top banner with logo and title."""
-    if logo_path.exists():
+    if Path(logo_path).exists():
         col1, col2 = st.columns([1, 5])
         with col1:
             st.image(str(logo_path), width=100)
@@ -123,7 +124,7 @@ def display_banner(logger, logo_path=LOGO_PATH):
             # and does not contain untrusted user input to prevent XSS.
             st.markdown(f"<h1 style='{STYLES['title']}'>Traffic Data Analysis</h1>", unsafe_allow_html=True)
     else:
-        logger.warning(f"Logo file not found at: {logo_path.resolve()}")
+        logger.warning(f"Logo file not found at: {Path(logo_path).resolve()}")
         st.error("Logo file not found, banner title only.")
         # WARNING: unsafe_allow_html=True is used. Ensure STYLES['title'] is safe
         # and does not contain untrusted user input to prevent XSS.

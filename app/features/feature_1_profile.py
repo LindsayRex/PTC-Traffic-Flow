@@ -18,8 +18,7 @@ from bokeh.plotting import save, output_file
 from bokeh.resources import CDN
 import tempfile
 import os
-
-hv.extension('bokeh')
+hv.extension(backend='bokeh')
 
 # Import utility functions - using relative import
 from ..db_utils import (
@@ -105,6 +104,7 @@ def render_station_profile():
     if station_df.empty:
         logger.warning("No station data available in the database")
         st.warning("No station data found matching criteria.")
+        return
     
     # Create station selection options
     station_options = [f"{row['station_id']} - {row['road_name']}" for _, row in station_df.iterrows()]

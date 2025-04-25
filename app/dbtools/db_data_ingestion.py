@@ -4,14 +4,24 @@ import sys
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from pathlib import Path
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
-from models import Base, Station, HourlyCount
+
+# Import the path utilities to standardize path handling
+from app.utils.path_utils import ensure_project_root_in_path, get_project_root, get_app_root, get_data_path
+
+# Ensure project root is in the Python path
+ensure_project_root_in_path()
+
+# Use absolute imports consistently after path is configured
+from app.models import Base, Station, HourlyCount
 from geoalchemy2 import WKTElement
-from db_utils import get_db_session, get_engine  # Import get_engine
-from tqdm import tqdm  # Import tqdm
-from data_load_checker import validate_station_data, validate_hourly_count_data
+from app.db_utils import get_db_session, get_engine
+from tqdm import tqdm
+# Use relative import for modules in the same package with the correct filename
+from .db_data_load_checker import validate_station_data, validate_hourly_count_data
 
 # --- CONFIGURABLE PARAMETERS ---
 MAX_ROWS_TO_PROCESS = 'all'  # Set to a number to limit rows, or 'all' to process the entire file
@@ -19,13 +29,10 @@ COMMIT_BATCH_SIZE = 10000  # Increase commit batch size
 # -----------------------------
 
 # Set up logging
-logger = logging.getLogger(__name__) # Get logger for this module
+logger = logging.getLogger(__name__)  # Get logger for this module
 
-# Get the logger for skipped data (no setup needed, handled by root)
+# Get the logger for skipped data
 skipped_data_logger = logging.getLogger("skipped_data")
-# Ensure level is set if you need INFO for skipped data specifically
-# and the root logger level might be higher (e.g., WARNING)
-# skipped_data_logger.setLevel(logging.INFO) # Optional: Uncomment if needed
 
 # Function to safely convert to float
 def safe_float(value):
@@ -44,8 +51,9 @@ def safe_int(value):
 def load_station_reference_data(session):
     """Loads station reference data from CSV into the database."""
     try:
-        # Load station reference data
-        df_stations = pd.read_csv('app/data/road_traffic_counts_station_reference.csv')
+        # Use the path_utils utility to get proper data path
+        data_path = get_data_path('road_traffic_counts_station_reference.csv')
+        df_stations = pd.read_csv(data_path)
         logger.info(f"Read {len(df_stations)} station records from CSV")
 
         # Limit the number of rows to process
@@ -91,7 +99,7 @@ def load_station_reference_data(session):
                 location_geom = WKTElement(wkt_point, srid=4326)
 
                 station = Station(
-                    station_key=int(row.get('station_key')),
+                    station_key=safe_int(row.get('station_key')),
                     station_id=str(row.get('station_id')) if not isinstance(row.get('station_id'), str) else row.get('station_id'),
                     name=str(row.get('name')) if not isinstance(row.get('name'), str) else row.get('name'),
                     road_name=str(row.get('road_name')) if not isinstance(row.get('road_name'), str) else row.get('road_name'),
@@ -139,20 +147,26 @@ def ingest_hourly_data():
     """Ingests hourly traffic data from a CSV file into the database."""
 
     try:
-        with get_db_session() as session:  # Use the context manager
-            if session is None:
-                logger.error("Failed to get database session.")
-                return False
-
+        # Get database session
+        session = get_db_session()
+        if session is None:
+            logger.error("Failed to get database session.")
+            return False
+            
+        try:
             # Load station reference data first
             if not load_station_reference_data(session):
                 logger.error("Failed to load station reference data. Aborting hourly data ingestion.")
                 return False
 
-            # Read CSV file using relative path
-            csv_file_path = '/home/runner/workspace/app/data/road_traffic_counts_hourly_sample_0.csv'
-            df = pd.read_csv(csv_file_path, low_memory=False)
-            logger.info(f"Successfully read CSV file with {len(df)} rows")
+            # Read CSV file using relative path with OS-agnostic path handling
+            hourly_data_path = get_data_path('road_traffic_counts_hourly_sample_0.csv')
+            try:
+                df = pd.read_csv(hourly_data_path, low_memory=False)
+                logger.info(f"Successfully read CSV file with {len(df)} rows")
+            except Exception as e:
+                logger.error(f"Error reading hourly data CSV file: {e}")
+                return False
 
             # Limit the number of rows to process
             if MAX_ROWS_TO_PROCESS != 'all':
@@ -271,6 +285,11 @@ def ingest_hourly_data():
                 logger.error(f"Error importing data: {e}")
                 session.rollback()
                 return False
+
+        except Exception as e:
+            logger.error(f"A fatal error occurred: {e}")
+            session.rollback()
+            return False
 
     except Exception as e:
         logger.error(f"A fatal error occurred: {e}")

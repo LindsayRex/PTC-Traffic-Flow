@@ -97,6 +97,10 @@ def get_all_station_metadata(_session: Optional[Session]) -> Optional[pd.DataFra
         return None
     try:
         query = _session.query(Station)
+        if _session.bind is None:
+            logger.error("Session bind is None in get_all_station_metadata.")
+            st.error("Database connection is not available.")
+            return pd.DataFrame()
         df = pd.read_sql(query.statement, _session.bind)
         logger.debug(f"Retrieved {len(df)} station metadata records")
         return df
@@ -143,7 +147,14 @@ def get_latest_data_date(_session, station_key: int, direction: int):
         return None
 
 @st.cache_data
-def get_hourly_data_for_stations(_session, station_keys: list, start_date, end_date, directions: list = None, required_cols: list = None):
+def get_hourly_data_for_stations(
+    _session: Optional[Session],
+    station_keys: list,
+    start_date,
+    end_date,
+    directions: Optional[List[Any]] = None,
+    required_cols: Optional[List[Any]] = None
+) -> Optional[pd.DataFrame]:
     """Fetches hourly count data for a list of stations and date range."""
     if _session is None:
         logger.error("Database session is None in get_hourly_data_for_stations.")
@@ -157,6 +168,10 @@ def get_hourly_data_for_stations(_session, station_keys: list, start_date, end_d
         if directions and 3 not in directions:
             query = query.filter(HourlyCount.traffic_direction_seq.in_(directions))
 
+        if _session.bind is None:
+            logger.error("Session bind is None in get_hourly_data_for_stations.")
+            st.error("Database connection is not available.")
+            return pd.DataFrame()
         df = pd.read_sql(query.statement, _session.bind)
         logger.debug(f"Retrieved {len(df)} hourly records")
         return df

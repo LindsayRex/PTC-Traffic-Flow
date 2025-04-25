@@ -13,10 +13,16 @@ DEFAULT_LOG_FORMAT = "%(asctime)s - %(name)-25s - %(levelname)-8s - %(message)s"
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # --- END FIX ---
 
-def setup_logging():
+from typing import Optional
+
+def setup_logging(script_name: Optional[str] = None):
     """
     Configures logging for the application.
     Attempts to use Streamlit secrets, falls back to environment variables or defaults.
+    
+    Args:
+        script_name (str, optional): Name of the caller script to use for log file naming.
+                                    If None, will attempt to detect automatically.
     """
     log_level = DEFAULT_LOG_LEVEL
     log_format = DEFAULT_LOG_FORMAT
@@ -40,7 +46,7 @@ def setup_logging():
              # Add similar fallbacks for format, date_format, log_to_file if needed via env vars
              log_to_file = os.environ.get("LOG_TO_FILE", "True").lower() == "true"
 
-    except (AttributeError, st.errors.StreamlitAPIException, st.errors.StreamlitSecretNotFoundError) as e:
+    except AttributeError as e:
         # Catch errors if st.secrets access fails
         print(f"Could not access Streamlit secrets ({type(e).__name__}), checking environment variables.")
         log_level = os.environ.get("LOG_LEVEL", DEFAULT_LOG_LEVEL).upper()
@@ -49,23 +55,24 @@ def setup_logging():
     # --- END FIX ---
 
     # --- FIX: Determine caller script name ---
-    caller_script_name = "app" # Default name
-    try:
-        stack = inspect.stack()
-        # The last frame in the stack usually represents the initial script.
-        # Filter out frames that might be from interactive sessions or frozen modules.
-        relevant_frames = [frame for frame in stack if frame.filename and not frame.filename.startswith('<')]
-        if relevant_frames:
-            # Get the filename of the outermost relevant frame
-            top_level_script_path = relevant_frames[-1].filename
-            # Extract the name without extension
-            caller_script_name = Path(top_level_script_path).stem
-            print(f"Determined caller script name for logging: {caller_script_name}") # Debug print
-        else:
-            print("Could not determine caller script from stack, using default 'app' for log name.")
+    caller_script_name = script_name if script_name else "app" # Default name
+    if not script_name:
+        try:
+            stack = inspect.stack()
+            # The last frame in the stack usually represents the initial script.
+            # Filter out frames that might be from interactive sessions or frozen modules.
+            relevant_frames = [frame for frame in stack if frame.filename and not frame.filename.startswith('<')]
+            if relevant_frames:
+                # Get the filename of the outermost relevant frame
+                top_level_script_path = relevant_frames[-1].filename
+                # Extract the name without extension
+                caller_script_name = Path(top_level_script_path).stem
+                print(f"Determined caller script name for logging: {caller_script_name}") # Debug print
+            else:
+                print("Could not determine caller script from stack, using default 'app' for log name.")
 
-    except Exception as inspect_err:
-        print(f"Error inspecting stack to determine caller script name: {inspect_err}. Using default 'app' for log name.")
+        except Exception as inspect_err:
+            print(f"Error inspecting stack to determine caller script name: {inspect_err}. Using default 'app' for log name.")
     # --- END FIX ---
 
     # Validate log level

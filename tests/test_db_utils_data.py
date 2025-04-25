@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 import pandas as pd
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.sql.elements import Update
+from sqlalchemy import update # Use this standard import
 from app import db_utils
 from app.models import Station, HourlyCount
 

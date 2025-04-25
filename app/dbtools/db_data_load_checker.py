@@ -1,7 +1,16 @@
 import logging
 import pandas as pd
+import sys
+from pathlib import Path
 from sqlalchemy.orm import Session
-from models import Station, HourlyCount
+
+# Ensure project root is in the Python path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.append(str(PROJECT_ROOT))
+
+# Now use absolute imports consistently
+from app.models import Station, HourlyCount
 
 logger = logging.getLogger(__name__)
 

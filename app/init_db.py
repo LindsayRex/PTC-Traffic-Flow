@@ -1,9 +1,9 @@
 import os
 import logging
-from log_config import setup_logging
+from app.log_config import setup_logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
-from models import Base
+from app.models import Base
 
 # For TOML parsing
 import tomli
