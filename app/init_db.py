@@ -1,9 +1,11 @@
 import os
 import logging
+from pathlib import Path
 from app.log_config import setup_logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import SQLAlchemyError
 from app.models import Base
+from app.utils.path_utils import get_project_root, normalize_path
 
 # For TOML parsing
 import tomli
@@ -20,7 +22,7 @@ def get_database_url():
         return db_url
 
     # 2. Try .streamlit/secrets.toml
-    secrets_path = os.path.join(os.path.dirname(__file__), '..', '.streamlit', 'secrets.toml')
+    secrets_path = normalize_path('.streamlit/secrets.toml', get_project_root())
     try:
         with open(secrets_path, "rb") as f:
             secrets = tomli.load(f)

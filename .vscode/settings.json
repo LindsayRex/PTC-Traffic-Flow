@@ -1,20 +1,27 @@
 {
+    // Python interpreter and environment
     "python.defaultInterpreterPath": "C:\\Users\\linds\\.conda\\envs\\traffic_flow\\python.exe",
+    
+    // Testing configuration - Pytest
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
-    "python.testing.autoTestDiscoverOnSaveEnabled": true,
     "python.testing.pytestArgs": [
         "tests",
         "-v"
     ],
+    "python.testing.cwd": "${workspaceFolder}",
+    "python.testing.autoTestDiscoverOnSaveEnabled": true,
+    
+    // Test Explorer UI settings
     "testing.sortOrder": "grouped",
     "testing.displayMode": "tree",
-    "python.testing.cwd": "${workspaceFolder}",
-    "python.testing.testPathFormatting": "absolute",
-    "python.experiments.optInto": ["pythonTestAdapter", "pythonTestAdapter.pytest"],
     "testExplorer.codeLens": true,
     "testExplorer.gutterDecoration": true,
     "testExplorer.showCollapseButton": true,
-    "testExplorer.addToEditorContextMenu": true
+    "testExplorer.addToEditorContextMenu": true,
+    
+    // MCP server settings - prevent background termination
+    "mcp.serverTimeout": 300000,
+    "mcp.keepAlive": true
 }

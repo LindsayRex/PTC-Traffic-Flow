@@ -84,6 +84,20 @@
         "python.testing.autoTestDiscoverOnSaveEnabled": true,
         
         // Force path normalization
-        "python.testing.testPathFormatting": "absolute"
+        "python.testing.testPathFormatting": "absolute",
+
+        // MCP server settings to prevent background termination
+        "mcp.serverTimeout": 300000,
+        "mcp.keepAlive": true,
+
+        // Python interpreter path
+        "python.pythonPath": "C:\\Users\\linds\\.conda\\envs\\traffic_flow\\python.exe",
+
+        // Activate environment in current terminal
+        "python.terminal.activateEnvInCurrentTerminal": true
+	},
+	"tasks": {
+		"version": "2.0.0",
+		"tasks": []
 	}
 }

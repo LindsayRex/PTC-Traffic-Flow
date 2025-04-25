@@ -6,6 +6,10 @@ from pathlib import Path
 import datetime
 import streamlit as st
 import inspect # <-- Import inspect module
+from typing import Optional
+
+# Import path utility functions
+from app.utils.path_utils import get_project_root, get_app_root, normalize_path
 
 # --- FIX: Add default configuration ---
 DEFAULT_LOG_LEVEL = "ERROR"
@@ -13,9 +17,7 @@ DEFAULT_LOG_FORMAT = "%(asctime)s - %(name)-25s - %(levelname)-8s - %(message)s"
 DEFAULT_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 # --- END FIX ---
 
-from typing import Optional
-
-def setup_logging(script_name: Optional[str] = None):
+def setup_logging(script_name: Optional[str] = None) -> None:
     """
     Configures logging for the application.
     Attempts to use Streamlit secrets, falls back to environment variables or defaults.
@@ -115,17 +117,13 @@ def setup_logging(script_name: Optional[str] = None):
 
     # --- FIX: Conditional file logging ---
     if log_to_file:
-        # Get the directory containing log_config.py (app/)
-        script_dir = Path(__file__).parent
-        # Get the parent directory (project root: ptc_traffic_flow/)
-        project_root = script_dir.parent
-        # Define the logs directory path within the project root
+        # Use path utils to get project root and define log directory
+        project_root = get_project_root()
         log_dir_path = project_root / "logs"
+        
         # Construct the full file path
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        # --- FIX: Use determined script name ---
-        log_file_name = f"{caller_script_name}_{timestamp}.log" # Use determined name
-        # --- END FIX ---
+        log_file_name = f"{caller_script_name}_{timestamp}.log"
         file_path = log_dir_path / log_file_name
 
         try:

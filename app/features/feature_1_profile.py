@@ -17,7 +17,11 @@ import streamlit.components.v1 as components
 from bokeh.plotting import save, output_file
 from bokeh.resources import CDN
 import tempfile
-import os
+from pathlib import Path
+
+# Import utility paths module
+from ..utils.path_utils import normalize_path, get_project_root, get_app_root, get_data_path
+
 hv.extension(backend='bokeh')
 
 # Import utility functions - using relative import
@@ -42,7 +46,11 @@ def embed_bokeh_plot(hv_plot, height=450):
             return None
 
         # Create a temporary HTML file
-        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode='w', encoding='utf-8') as tmpfile:
+        temp_dir = normalize_path('app/data/temp', get_project_root())
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        
+        with tempfile.NamedTemporaryFile(suffix=".html", delete=False, mode='w', encoding='utf-8', 
+                                         dir=temp_dir) as tmpfile:
             output_file(tmpfile.name, title="", mode='cdn')
             save(bokeh_fig)
             tmpfile_path = tmpfile.name
@@ -54,7 +62,7 @@ def embed_bokeh_plot(hv_plot, height=450):
 
         # Clean up the temporary file
         try:
-            os.remove(tmpfile_path)
+            Path(tmpfile_path).unlink()
             logger.debug(f"Removed temporary file: {tmpfile_path}")
         except OSError as e:
             logger.warning(f"Could not remove temporary file {tmpfile_path}: {e}")

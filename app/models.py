@@ -1,9 +1,17 @@
+"""
+Database models for the PTC Traffic Flow application.
+
+This module defines the SQLAlchemy ORM models that represent the database schema.
+For file path operations related to these models (such as data import/export),
+use the path utilities from app.utils.path_utils.
+"""
 from sqlalchemy import (
     Column, Integer, String, Boolean, Float, Date, ForeignKey,
     Index, BigInteger
 )
 from sqlalchemy.orm import relationship, declarative_base
 from geoalchemy2 import Geometry
+from app.utils.path_utils import get_data_path, normalize_path
 
 Base = declarative_base()
 
