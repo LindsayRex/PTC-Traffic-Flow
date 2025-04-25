@@ -2,6 +2,7 @@ import pytest
 import pandas as pd
 import datetime
 from contextlib import nullcontext
+import streamlit.components.v1 as components
 
 import app.features.feature_1_profile as f1
 
@@ -23,7 +24,7 @@ def stub_streamlit(monkeypatch):
     monkeypatch.setattr(f1.st, "spinner", lambda *a, **k: nullcontext())
 
     # basic UI stubs
-    for attr in ("title", "subheader", "selectbox", "table"):  
+    for attr in ["title", "subheader", "selectbox", "table"]:  
         monkeypatch.setattr(f1.st, attr, lambda *a, **k: None)
 
     # capture error/warning
@@ -79,6 +80,7 @@ def _make_station_df() -> pd.DataFrame:
 
 # --- New test: get_station_details raises exception ---
 
+@pytest.mark.usefixtures("stub_streamlit")
 def test_station_details_exception(monkeypatch):
     """
     If get_station_details raises an exception, render_station_profile() should call st.error().
@@ -106,7 +108,7 @@ def test_latest_data_date_exception(monkeypatch):
     monkeypatch.setattr(f1, "get_db_session", lambda: DummySession())
     monkeypatch.setattr(f1, "get_all_station_metadata", lambda s: _make_station_df())
     monkeypatch.setattr(f1, "get_station_details", lambda s, key: {"dummy": 1})
-    def bad_latest(s, key, date):
+    def bad_latest(s, key, direction):
         raise ValueError("no date")
     monkeypatch.setattr(f1, "get_latest_data_date", bad_latest)
     # stub selectbox to return first element in options list
@@ -151,3 +153,100 @@ def test_full_flow_success(monkeypatch):
     f1.render_station_profile()
     assert not f1._test_messages['error']
     assert not f1._test_messages['warning']
+
+
+# --- New tests: Data Access & Validation extensions ---
+
+# Test when get_hourly_data_for_stations returns None
+def test_hourly_data_none(monkeypatch):
+    monkeypatch.setattr(f1, "get_db_session", lambda: DummySession())
+    monkeypatch.setattr(f1, "get_all_station_metadata", lambda s: _make_station_df())
+    monkeypatch.setattr(f1, "get_station_details", lambda s, key: {'wgs84_latitude': 1.0, 'wgs84_longitude': 1.0})
+    monkeypatch.setattr(f1, "get_latest_data_date", lambda s, key, direction: datetime.date(2024, 6, 30))
+    monkeypatch.setattr(f1, "get_hourly_data_for_stations", lambda s, keys, start, end, **kw: None)
+    monkeypatch.setattr(f1.st, "selectbox", lambda label, options, *a, **k: options[0])
+
+    f1.render_station_profile()
+    errors = f1._test_messages["error"]
+    assert any("Could not load traffic data for the selected station." in e for e in errors)
+
+
+# Test when get_hourly_data_for_stations returns empty DataFrame
+def test_hourly_data_empty(monkeypatch):
+    monkeypatch.setattr(f1, "get_db_session", lambda: DummySession())
+    monkeypatch.setattr(f1, "get_all_station_metadata", lambda s: _make_station_df())
+    monkeypatch.setattr(f1, "get_station_details", lambda s, key: {'wgs84_latitude': 1.0, 'wgs84_longitude': 1.0})
+    monkeypatch.setattr(f1, "get_latest_data_date", lambda s, key, direction: datetime.date(2024, 6, 30))
+    monkeypatch.setattr(f1, "get_hourly_data_for_stations", lambda s, keys, start, end, **kw: pd.DataFrame())
+    monkeypatch.setattr(f1.st, "selectbox", lambda label, options, *a, **k: options[0])
+
+    f1.render_station_profile()
+    warnings = f1._test_messages["warning"]
+    assert any("No hourly data available for this station and direction." in w for w in warnings)
+
+
+# Test when get_latest_data_date returns None
+def test_latest_data_date_none(monkeypatch):
+    monkeypatch.setattr(f1, "get_db_session", lambda: DummySession())
+    monkeypatch.setattr(f1, "get_all_station_metadata", lambda s: _make_station_df())
+    monkeypatch.setattr(f1, "get_station_details", lambda s, key: {'wgs84_latitude': 1.0, 'wgs84_longitude': 1.0})
+    monkeypatch.setattr(f1, "get_latest_data_date", lambda s, key, direction: None)
+    monkeypatch.setattr(f1.st, "selectbox", lambda label, options, *a, **k: options[0])
+
+    f1.render_station_profile()
+    warnings = f1._test_messages["warning"]
+    assert any("No data found for this station and direction to determine date range." in w for w in warnings)
+
+
+# Test dynamic date range calculation for valid latest_date
+def test_dynamic_date_range_calculation(monkeypatch):
+    today = datetime.date(2024, 6, 30)
+    expected_90 = today - datetime.timedelta(days=90)
+    expected_year = today - datetime.timedelta(days=365)
+    captured = {}
+    def capture_hourly(s, keys, start, end, **kw):
+        captured['start'] = start
+        captured['end'] = end
+        return pd.DataFrame()
+
+    monkeypatch.setattr(f1, "get_db_session", lambda: DummySession())
+    monkeypatch.setattr(f1, "get_all_station_metadata", lambda s: _make_station_df())
+    monkeypatch.setattr(f1, "get_station_details", lambda s, key: {'wgs84_latitude': 1.0, 'wgs84_longitude': 1.0})
+    monkeypatch.setattr(f1, "get_latest_data_date", lambda s, key, direction: today)
+    monkeypatch.setattr(f1, "get_hourly_data_for_stations", capture_hourly)
+    monkeypatch.setattr(f1.st, "selectbox", lambda label, options, *a, **k: options[0])
+
+    f1.render_station_profile()
+    assert captured.get('start') == expected_year
+    assert captured.get('end') == today
+
+
+# Test when get_station_details returns None
+def test_station_details_none(monkeypatch):
+    monkeypatch.setattr(f1, "get_db_session", lambda: DummySession())
+    monkeypatch.setattr(f1, "get_all_station_metadata", lambda s: _make_station_df())
+    monkeypatch.setattr(f1, "get_station_details", lambda s, key: None)
+    # stub selectbox and other DB calls
+    monkeypatch.setattr(f1.st, "selectbox", lambda label, options, *a, **k: options[0])
+    monkeypatch.setattr(f1, "get_latest_data_date", lambda s, key, direction: datetime.date(2024, 6, 30))
+    monkeypatch.setattr(f1, "get_hourly_data_for_stations", lambda s, keys, start, end, **kw: pd.DataFrame())
+
+    f1.render_station_profile()
+    errors = f1._test_messages["error"]
+    assert any("Could not load details for the selected station." in e for e in errors)
+
+
+# Test when get_hourly_data_for_stations raises exception
+def test_hourly_data_exception(monkeypatch):
+    monkeypatch.setattr(f1, "get_db_session", lambda: DummySession())
+    monkeypatch.setattr(f1, "get_all_station_metadata", lambda s: _make_station_df())
+    monkeypatch.setattr(f1, "get_station_details", lambda s, key: {'wgs84_latitude': 1.0, 'wgs84_longitude': 1.0})
+    monkeypatch.setattr(f1, "get_latest_data_date", lambda s, key, direction: datetime.date(2024, 6, 30))
+    def bad_hourly(s, keys, start, end, **kw):
+        raise RuntimeError("DB error")
+    monkeypatch.setattr(f1, "get_hourly_data_for_stations", bad_hourly)
+    monkeypatch.setattr(f1.st, "selectbox", lambda label, options, *a, **k: options[0])
+
+    f1.render_station_profile()
+    errors = f1._test_messages["error"]
+    assert any("Error loading traffic data. Check logs for details." in e for e in errors)

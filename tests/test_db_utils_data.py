@@ -31,6 +31,7 @@ class TestDBUtilsData:
         session.bind = 'bind'
 
         result = db_utils.get_all_station_metadata(session)
+        assert result is not None
         assert result.equals(dummy_df)
         mock_read_sql.assert_called_once_with('stmt', 'bind')
 
@@ -122,6 +123,7 @@ class TestDBUtilsData:
         session.bind = 'bind'
 
         result = db_utils.get_hourly_data_for_stations(session, [1,2], 'start', 'end', directions=[1], required_cols=None)
+        assert result is not None
         assert result.equals(dummy_df)
         mock_read_sql.assert_called_once_with('stmt', 'bind')
 

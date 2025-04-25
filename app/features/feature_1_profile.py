@@ -19,6 +19,9 @@ from bokeh.resources import CDN
 import tempfile
 from pathlib import Path
 
+# Add test messages container attribute to support test assertions
+_test_messages: Dict[str, List[str]] = {}
+
 # Import utility paths module
 from ..utils.path_utils import normalize_path, get_project_root, get_app_root, get_data_path
 

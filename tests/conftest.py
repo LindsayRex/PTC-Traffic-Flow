@@ -29,16 +29,18 @@ sys.path.append(str(PROJECT_ROOT))
 # Now it's safe to import other modules if needed
 
 
+from collections.abc import Generator
+
 @pytest.fixture(scope="session", autouse=True)
-def suppress_geoalchemy2_warnings() -> None:
+def suppress_geoalchemy2_warnings() -> Generator[None, None, None]:
     """
     Suppress GeoAlchemy2 function registration warnings.
-    
+
     Note: This fixture is mainly kept for backward compatibility.
     Most warnings should already be filtered by the early warning filter.
     """
     # The early filter should handle most cases, but keep the patch as a fallback
-    with patch("geoalchemy2.functions.GenericFunction.__init_subclass__", 
+    with patch("geoalchemy2.functions.GenericFunction.__init_subclass__",
                side_effect=lambda *args, **kwargs: None):
         yield
 
