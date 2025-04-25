@@ -126,20 +126,35 @@ def get_station_details(_session, station_key: int):
         st.error("Failed to load station details from database.")
         return None
 
-def get_latest_data_date(_session, station_key: int, direction: int):
-    """Fetches the latest data timestamp for a given station and direction."""
+def get_latest_data_date(_session: Optional[Session], station_id: int, direction: int) -> Optional[pd.Timestamp]:
+    """
+    Retrieve the latest data date for a given station and direction.
+
+    Args:
+        _session: SQLAlchemy Session or None.
+        station_id: Station identifier.
+        direction: Direction identifier.
+
+    Returns:
+        A pandas Timestamp if a valid date is found; otherwise, None.
+    """
     if _session is None:
         logger.error("Database session is None in get_latest_data_date.")
         return None
+
     try:
-        latest_date = _session.query(func.max(HourlyCount.count_date))\
-                              .filter(HourlyCount.station_key == station_key)\
-                              .filter(HourlyCount.traffic_direction_seq == direction)\
-                              .scalar()
-        logger.debug(f"Latest data date for station {station_key}, direction {direction}: {latest_date}")
-        return latest_date
-    except Exception as e:
-        logger.error(f"Error fetching latest data date for station {station_key}, direction {direction}: {e}", exc_info=True)
+        # Use a relationship filter for the station field.
+        query = _session.query(HourlyCount.count_date).filter(
+            HourlyCount.station.has(Station.station_key == station_id),
+            HourlyCount.traffic_direction_seq == direction
+        )
+        result = query.scalar()
+        return result
+    except SQLAlchemyError as e:
+        logger.error(
+            f"Error fetching latest data date for station {station_id}, direction {direction}: {e}",
+            exc_info=True
+        )
         st.error("Failed to load latest data date from database.")
         return None
 

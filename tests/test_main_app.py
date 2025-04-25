@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 import sys
+import os
 
 # Mock streamlit and other heavy dependencies BEFORE importing the module under test
 mock_st = MagicMock()
@@ -57,12 +58,13 @@ def reset_mocks():
 
 def test_configure_page(reset_mocks):
     configure_page()
-    mock_st.set_page_config.assert_called_once_with(
-        page_title="Traffic Data Analysis",
-        page_icon="app/gfx/ptc-logo-white.png",
-        layout="wide",
-        initial_sidebar_state="expanded"
-    )
+    _, kwargs = mock_st.set_page_config.call_args
+    assert kwargs["page_title"] == "Traffic Data Analysis"
+    assert kwargs["layout"] == "wide"
+    assert kwargs["initial_sidebar_state"] == "expanded"
+    expected_suffix = os.path.join("app", "gfx", "ptc-logo-white.png")
+    # Check that the page_icon ends with the OS-specific expected suffix
+    assert kwargs["page_icon"].endswith(expected_suffix)
 
 @patch('logging.getLogger')
 def test_initialize_logging(mock_getLogger, reset_mocks):

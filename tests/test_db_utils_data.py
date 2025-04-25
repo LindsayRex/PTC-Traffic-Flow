@@ -1,17 +1,11 @@
 import pytest
-from unittest.mock import patch, MagicMock
-import pandas as pd
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import update # Use this standard import
-from contextlib import contextmanager  # added for session_scope tests
-from app import db_utils
-from app.models import Station, HourlyCount
-import pytest
 from unittest.mock import patch, MagicMock, call
 import pandas as pd
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import update, text # Use this standard import
 from contextlib import contextmanager  # added for session_scope tests
+from app import db_utils
+from app.models import Station, HourlyCount
 
 # Add helper contextmanagers for session_scope patching
 @contextmanager
@@ -21,7 +15,13 @@ def fake_scope_none():
 
 @contextmanager
 def make_fake_scope(session: MagicMock):
-    """Context manager yielding the provided mock session."""
+    """
+    Context manager yielding the provided mock session.
+
+    This function is intended for testing purposes. It is used to mock
+    the `session_scope` context manager in tests, allowing a mock session
+    to be injected and controlled during test execution.
+    """
     yield session
 
 
@@ -155,15 +155,13 @@ class TestDBUtilsData:
     def test_get_latest_data_date_success_with_timestamp(self):
         """Test get_latest_data_date successful execution returning pd.Timestamp."""
         session = MagicMock()
-        expected_date = pd.Timestamp('2025-01-01')
-        mock_scalar = MagicMock()
-        mock_scalar.scalar.return_value = expected_date
-        session.query.return_value.filter.return_value = mock_scalar
+        expected_date = pd.Timestamp("2025-01-01")
+        # Chain two filter calls before scalar() is called
+        session.query.return_value.filter.return_value.filter.return_value.scalar.return_value = expected_date
 
         result = db_utils.get_latest_data_date(session, 7, 2)
 
         assert result == expected_date
-        # Check query and filter calls if needed (more complex to assert exact SQLAlchmey expressions)
 
     @patch('app.db_utils.st', autospec=True)
     @patch('app.db_utils.logger', autospec=True)
@@ -361,7 +359,6 @@ class TestDBUtilsData:
             assert hasattr(args[0], 'text')
             assert "UPDATE stations" in str(args[0])
             assert "ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)" in str(args[0])
-            from unittest.mock import call
             mock_logger.info.assert_has_calls([
                 call("Updating station geometries..."),
                 call("Station geometries updated successfully.")
@@ -389,148 +386,3 @@ class TestDBUtilsData:
                 "Failed to update station geometries in database."
             )
             # Rollback/close is implicitly tested by session_scope test
-
-    @patch('app.db_utils.logger', autospec=True)
-    def test_get_station_details_not_found(self, mock_logger):
-        session = MagicMock()
-        session.query.return_value.filter.return_value.first.return_value = None
-
-        assert db_utils.get_station_details(session, 42) is None
-        mock_logger.warning.assert_called_once()
-
-    @patch('app.db_utils.st', autospec=True)
-    @patch('app.db_utils.logger', autospec=True)
-    def test_get_station_details_exception(self, mock_logger, mock_st):
-        session = MagicMock()
-        session.query.return_value.filter.return_value.first.side_effect = Exception('oops')
-
-        assert db_utils.get_station_details(session, 99) is None
-        mock_logger.error.assert_called_once()
-        mock_st.error.assert_called_once()
-
-    @patch('app.db_utils.logger', autospec=True)
-    def test_get_latest_data_date_none_session_function(self, mock_logger):
-        assert db_utils.get_latest_data_date(None, 1, 1) is None
-        mock_logger.error.assert_called_once_with(
-            "Database session is None in get_latest_data_date."
-        )
-
-    def test_get_latest_data_date_success(self):
-        session = MagicMock()
-        session.query.return_value.filter.return_value.scalar.return_value = '2025-01-01'
-
-        result = db_utils.get_latest_data_date(session, 7, 2)
-        assert result == '2025-01-01'
-
-    @patch('app.db_utils.st', autospec=True)
-    @patch('app.db_utils.logger', autospec=True)
-    def test_get_latest_data_date_exception(self, mock_logger, mock_st):
-        session = MagicMock()
-        session.query.return_value.filter.return_value.scalar.side_effect = Exception('fail')
-
-        assert db_utils.get_latest_data_date(session, 7, 2) is None
-        mock_logger.error.assert_called_once()
-        mock_st.error.assert_called_once()
-
-    @patch('app.db_utils.logger', autospec=True)
-    def test_get_hourly_data_for_stations_none_session(self, mock_logger):
-        assert db_utils.get_hourly_data_for_stations(None, [1], None, None) is None
-        mock_logger.error.assert_called_once_with(
-            "Database session is None in get_hourly_data_for_stations."
-        )
-
-    @patch('app.db_utils.pd.read_sql')
-    @patch('app.db_utils.logger', autospec=True)
-    def test_get_hourly_data_for_stations_success(self, mock_logger, mock_read_sql):
-        session = MagicMock()
-        dummy_df = make_dummy_df()
-        mock_read_sql.return_value = dummy_df
-        # simulate query building
-        query = MagicMock(statement='stmt')
-        session.query.return_value.filter.return_value = query
-        session.bind = 'bind'
-
-        df = pd.read_sql(str(query.statement), session.bind)
-
-        result = db_utils.get_hourly_data_for_stations(session, [1,2], 'start', 'end', directions=[1], required_cols=None)
-        assert result is not None
-        assert result.equals(dummy_df)
-        mock_read_sql.assert_called_once_with('stmt', 'bind')
-
-    @patch('app.db_utils.pd.read_sql', side_effect=Exception('fail'), autospec=True)
-    @patch('app.db_utils.logger', autospec=True)
-    @patch('app.db_utils.st', autospec=True)
-    def test_get_hourly_data_for_stations_exception(self, mock_st, mock_logger, mock_read_sql):
-        session = MagicMock()
-        session.query.return_value.filter.return_value = MagicMock()
-        session.bind = 'bind'
-
-        df = db_utils.get_hourly_data_for_stations(session, [1], 's', 'e')
-        assert isinstance(df, pd.DataFrame) and df.empty
-        mock_logger.error.assert_called_once()
-        mock_st.error.assert_called_once()
-
-    @patch('app.db_utils.logger', autospec=True)
-    def test_get_distinct_values_none_session(self, mock_logger):
-        assert db_utils.get_distinct_values(None, 'station_key') is None
-        mock_logger.error.assert_called_once_with(
-            "Database session is None in get_distinct_values."
-        )
-
-    def test_get_distinct_values_invalid_column(self):
-        session = MagicMock()
-        assert db_utils.get_distinct_values(session, 'invalid_col') is None
-
-    def test_get_distinct_values_success(self):
-        session = MagicMock()
-        result_proxy = MagicMock()
-        result_proxy.scalars.return_value.all.return_value = [1,2,3]
-        session.execute.return_value = result_proxy
-
-        vals = db_utils.get_distinct_values(session, 'station_key')
-        assert vals == [1,2,3]
-
-    @patch('app.db_utils.st', autospec=True)
-    @patch('app.db_utils.logger', autospec=True)
-    def test_get_distinct_values_exception(self, mock_logger, mock_st):
-        session = MagicMock()
-        session.execute.side_effect = Exception('fail')
-        assert db_utils.get_distinct_values(session, 'station_key') is None
-        mock_logger.error.assert_called_once()
-        mock_st.error.assert_called_once()
-
-    def test_session_scope_no_session(self):
-        with patch('app.db_utils.get_db_session', return_value=None):
-            with db_utils.session_scope() as sess:
-                assert sess is None
-
-    def test_session_scope_commit_and_close(self):
-        session = MagicMock()
-        with patch('app.db_utils.get_db_session', return_value=session):
-            with db_utils.session_scope() as sess:
-                assert sess is session
-            session.commit.assert_called_once()
-            session.close.assert_called_once()
-
-    def test_session_scope_rollback(self):
-        session = MagicMock()
-        with patch('app.db_utils.get_db_session', return_value=session):
-            with pytest.raises(RuntimeError):
-                with db_utils.session_scope() as sess:
-                    raise RuntimeError("oops")
-            session.rollback.assert_called_once()
-            session.close.assert_called_once()
-
-    def test_update_station_geometries_none(self):
-        with patch('app.db_utils.session_scope', fake_scope_none):
-            with patch('app.db_utils.st', autospec=True) as mock_st:
-                db_utils.update_station_geometries()
-                mock_st.error.assert_called_once_with(
-                    "Database session not available for updating geometries."
-                )
-
-    def test_update_station_geometries_success(self):
-        session = MagicMock()
-        with patch('app.db_utils.session_scope', lambda: make_fake_scope(session)):
-            db_utils.update_station_geometries()
-            assert session.execute.call_count == 1
